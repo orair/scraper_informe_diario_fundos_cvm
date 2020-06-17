@@ -1,3 +1,5 @@
+
+# -*- coding: utf-8 -*-
 import os
 import datetime
 import click
@@ -8,7 +10,7 @@ import urllib
 @click.command("Gerenciador do Scraper dos Informes Diários de Fundos de Investimentos da CVM")
 @click.option('--ano_inicial', 
                 default=lambda: 
-                    os.environ.get('MORPHIO_INFORME_CVM_ANO_INICIAL', 2018), 
+                    os.environ.get('SCRAPER_INFORME_CVM_ANO_INICIAL', 2018), 
                 show_default="Variável de ambiente SCRAPER_INFORME_DIARIO_CVM_ANO_INICIAL ou o valor padrão 2018")
 @click.option('--skip_informacoes_cadastrais', 
                 default=False, is_flag=True, 
@@ -71,7 +73,7 @@ def obtem_periodos(ano_inicial=2018):
             if ano == ano_final and mes > mes_final:
                 break
 
-            periodo=f'{ano:04}{mes:02}'.format(ano, mes)
+            periodo=f'{ano:04}{mes:02}'
             periodos.append(periodo)
 
     return periodos;
