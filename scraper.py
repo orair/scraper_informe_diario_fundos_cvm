@@ -90,6 +90,12 @@ def obtem_periodos(ano_inicial=2018):
 
             periodo=f'{ano:04}{mes:02}'
             periodos.append(periodo)
+    
+    periodos.sort(reverse=True)
+
+    # TODO: Retirar períodos maiores que 12 meses que já tiverem sido carregados
+    # "Os arquivos referentes aos meses M-2, M-3, ..., até M-11 
+    # serão atualizados semanalmente com as eventuais reapresentações.
 
     return periodos
 
@@ -246,4 +252,4 @@ def init_database():
     #              + 'ON table_name(column_list); '
  
 if __name__ == '__main__':
-    executa_scraper()
+    #executa_scraper()
