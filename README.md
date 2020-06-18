@@ -24,7 +24,7 @@ Em particular, pretende-se utilizar a API do Morph.io para consumir os dados de 
 A documentação da CVM para este dataset pode ser obtida em: 
 * http://dados.cvm.gov.br/dataset/fi-doc-inf_diario
 
-### Documentação da CVM sobre o dataset
+### Documentação da CVM sobre os datasets
 O *INFORME DIÁRIO* é um demonstrativo que contém as seguintes informações do fundo, relativas à data de competência:
 * Valor total da carteira do fundo;
 * Patrimônio líquido;
@@ -39,8 +39,13 @@ Os arquivos referentes aos meses corrente (M) e anterior (M-1) serão atualizado
 
 Os arquivos referentes aos meses M-2, M-3, ..., até M-11 serão atualizados semanalmente com as eventuais reapresentações.
 
+#### Dicionários de dados
+
 Como o dicionário de dados pode ser atualizado pela CVM, sugere-se a consulta ao dicionário de dados que pode ser encontrado na página do dataset:
 * http://dados.cvm.gov.br/dados/FI/DOC/INF_DIARIO/META/meta_inf_diario_fi.txt
+
+Dicionário de dados das Informações Cadastrais dos fundos de investimento
+
 
 ## Decisões de projeto
 No projeto optou-se por obter as cotas a partir de 2018. 
