@@ -16,10 +16,11 @@ import urllib
                 default=False, is_flag=True, 
                 show_default=True)
 def executa_scraper(ano_inicial, skip_informacoes_cadastrais):
-    # TODO: Permitir mudar o database name
-    # Caso vá testar localmente utilizando a biblioteca padrão do scraper wiki,
-    # será necessário especificar a variável de ambiente para o valor padrão do morph.io
-    # os.environ['SCRAPERWIKI_DATABASE_NAME'] = 'sqlite:///data.sqlite'
+    # Como para usar o python 3 não podemos utilizar a biblioteca scraperwiki
+    # do  morph.io, utilizaremos a biblioteca padrão e aqui
+    # alteraremos o local da storage conforme esperado pela interface 
+    # do Morph.io
+    os.environ['SCRAPERWIKI_DATABASE_NAME'] = 'sqlite:///data.sqlite'
 
     periodos=obtem_periodos(ano_inicial)
     for periodo in periodos: 
