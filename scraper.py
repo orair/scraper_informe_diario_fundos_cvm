@@ -252,4 +252,4 @@ def init_database():
     #              + 'ON table_name(column_list); '
  
 if __name__ == '__main__':
-    #executa_scraper()
+    executa_scraper()
