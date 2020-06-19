@@ -7,6 +7,7 @@ import click
 import scraperwiki
 import pandas as pd
 import urllib
+import shutil
 
 @click.command("Gerenciador do Scraper dos Informes Diários de Fundos de Investimentos da CVM")
 @click.option('--skip_informacoes_cadastrais', 
@@ -20,12 +21,6 @@ import urllib
                     os.environ.get('SCRAPER_INFORME_CVM_ANO_INICIAL', 2018), 
                 show_default="Variável de ambiente SCRAPER_INFORME_DIARIO_CVM_ANO_INICIAL ou o valor padrão 2018")
 def executa_scraper(skip_informacoes_cadastrais=False, skip_informe_diario=False, ano_inicial=2018):
-    # Como para usar o python 3 não podemos utilizar a biblioteca scraperwiki
-    # do  morph.io, utilizaremos a biblioteca padrão e aqui
-    # alteraremos o local da storage conforme esperado pela interface 
-    # do Morph.io
-    os.environ['SCRAPERWIKI_DATABASE_NAME'] = 'sqlite:///data.sqlite'
-
     init_database()
 
     if (not skip_informacoes_cadastrais):
@@ -158,12 +153,17 @@ def captura_arquivo_dados_cadastrais(periodo):
         print(err.args)     # arguments stored in .args
         return None
 
+    print(f'Foram lidos {df.size} registros do arquivos.')
+
     # Filtra por situações dos fundos
     #    CANCELADA
     #    EM FUNCIONAMENTO NORMAL
     #    FASE PRÉ-OPERACIONAL
     situacoesDescartadas=['CANCELADA', 'FASE PRÉ-OPERACIONAL']
     df=df[~df.SIT.isin(situacoesDescartadas)]
+
+    print(f'Após o filtros dos fundos cancelados ou em fase pré-operacional, obteve-se {df.size} fundos.')
+
     # Cria um campo só com os números do CNPJ
     df['COD_CNPJ'] = df['CNPJ_FUNDO'].str.replace(r'\D+', '').str.zfill(14)
 
@@ -252,4 +252,13 @@ def init_database():
     #              + 'ON table_name(column_list); '
  
 if __name__ == '__main__':
+    print (f'variável de ambiente {os.environ.get("SCRAPERWIKI_DATABASE_NAME")}')
     executa_scraper()
+
+    # O scraperwiki do Morph.IO não é compatível com o Python3
+    # Também é difícil ficar configurando a variável de ambiente neste contexto
+    # Por esta razão, deixamos escrever no local padrão do scraperwiki
+    # E posteriormente copiamos o database para o diretório esperado pelo Morph.io
+    if os.path.exists('scraperwiki.sqlite'):
+        print('Renomeando arquivo sqlite')
+        shutil.copy('scraperwiki.sqlite', 'data.sqlite')
