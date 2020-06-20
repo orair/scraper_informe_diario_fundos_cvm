@@ -33,11 +33,9 @@ def executa_scraper(skip_informacoes_cadastrais=False, skip_informe_diario=False
     if (not skip_informe_diario):
         executa_scraper_informe_diario(ano_inicial)
 
-
 def executa_scraper_informe_diario(ano_inicial):
     periodos=obtem_periodos(ano_inicial)
     for periodo in periodos: 
-        print(f'Iniciando captura do arquivo de informe diário para o período {periodo}')
         informe_diario_df=captura_arquivo(periodo)
         # Verifica se recebeu os dados ok
         if informe_diario_df is not None and not informe_diario_df.empty:
@@ -48,6 +46,8 @@ def captura_arquivo(periodo):
     url = f'http://dados.cvm.gov.br/dados/FI/DOC/INF_DIARIO/DADOS/inf_diario_fi_{periodo}.csv'
 
     try:
+        print(f'Iniciando captura do arquivo de informe diário para o período {periodo} ({url})...')
+        
         # Realiza a leitura dos dados como csv
         # O delimitador dos csvs da CVM é o ';'
         # Como os dados estão salvos em ISO-8859-1, 
@@ -251,10 +251,18 @@ def init_database():
 
     scraperwiki.sqlite.execute(sql_create_table_dados_cadastrais)
 
-    # TODO: Criar os índices do banco de dados
-    #create_command='CREATE [UNIQUE] INDEX index_name '
-    #              + 'ON table_name(column_list); '
- 
+    print('Criando índices na tabela informe diario...')
+    sql_create_idx_01='''CREATE INDEX IF NOT EXISTS idx_informe_diario_01 
+        ON informe_diario (COD_CNPJ, DT_REF);
+    '''
+    scraperwiki.sqlite.execute(sql_create_idx_01)
+
+    sql_create_idx_02='''CREATE INDEX IF NOT EXISTS idx_informe_diario_02 
+        ON informe_diario (CNPJ_FUNDO, DT_REF);
+    '''
+    scraperwiki.sqlite.execute(sql_create_idx_02)
+
+
 if __name__ == '__main__':
     print (f'variável de ambiente {os.environ.get("SCRAPERWIKI_DATABASE_NAME")}')
     executa_scraper()
