@@ -22,9 +22,9 @@ import shutil
                 show_default=True)
 @click.option('--ano_inicial', 
                 default=lambda: 
-                    os.environ.get('SCRAPER_INFORME_CVM_ANO_INICIAL', 2018), 
+                    os.environ.get('SCRAPER_INFORME_CVM_ANO_INICIAL', 2019), 
                 show_default="Variável de ambiente SCRAPER_INFORME_DIARIO_CVM_ANO_INICIAL ou o valor padrão 2018")
-def executa_scraper(skip_informacoes_cadastrais=False, skip_informe_diario=False, ano_inicial=2018):
+def executa_scraper(skip_informacoes_cadastrais=False, skip_informe_diario=False, ano_inicial=2019):
     init_database()
 
     if (not skip_informacoes_cadastrais):
