@@ -207,6 +207,7 @@ def init_database():
        o que faz falhar a carga
     """
     sql_create_table_dados_cadastrais='''CREATE TABLE IF NOT EXISTS dados_cadastrais (
+        "COD_CNPJ" TEXT,
         "CNPJ_FUNDO" TEXT, 	
         "DENOM_SOCIAL" TEXT, 	
         "DT_REG" TEXT, 	
@@ -242,21 +243,21 @@ def init_database():
         "CNPJ_CUSTODIANTE" TEXT, 	
         "CUSTODIANTE" TEXT, 	
         "CNPJ_CONTROLADOR" TEXT, 	
-        "CONTROLADOR" TEXT, 	
-        "COD_CNPJ" TEXT);    
+        "CONTROLADOR" TEXT
+        );    
     '''
     #scraperwiki.sqlite.execute('DROP TABLE dados_cadastrais;')
 
     scraperwiki.sqlite.execute(sql_create_table_dados_cadastrais)
 
     print('Criando índices na tabela dados cadastrais...')
-    sql_create_idx='''CREATE UNIQUE INDEX IF NOT EXISTS idx_dados_cadastrais_01
-        ON dados_cadastrais (CNPJ_FUNDO);
+    sql_create_idx='''CREATE UNIQUE INDEX IF NOT EXISTS idx_dados_cadastrais_02
+        ON dados_cadastrais (COD_CNPJ);
     '''
     scraperwiki.sqlite.execute(sql_create_idx)
 
-    sql_create_idx='''CREATE UNIQUE INDEX IF NOT EXISTS idx_dados_cadastrais_02
-        ON dados_cadastrais (COD_CNPJ);
+    sql_create_idx='''CREATE UNIQUE INDEX IF NOT EXISTS idx_dados_cadastrais_01
+        ON dados_cadastrais (CNPJ_FUNDO);
     '''
     scraperwiki.sqlite.execute(sql_create_idx)
 
@@ -289,22 +290,37 @@ def init_database():
         ON dados_cadastrais (CNPJ_CONTROLADOR);
     '''
     scraperwiki.sqlite.execute(sql_create_idx)
- 
-    scraperwiki.sqlite.execute('DROP INDEX IF EXISTS idx_informe_diario_01;')
-    scraperwiki.sqlite.execute('DROP INDEX IF EXISTS idx_informe_diario_02;')
-    scraperwiki.sqlite.execute('DROP INDEX IF EXISTS idx_informe_diario_03;')
+
+    sql_create_table='''CREATE TABLE IF NOT EXISTS informe_diario (
+        "COD_CNPJ" TEXT, 	
+        "CNPJ_FUNDO" TEXT, 	
+        "DT_REF" DATE, 	
+        "DT_COMPTC" DATE, 	
+        "VL_TOTAL" NUMERIC, 	
+        "VL_QUOTA" NUMERIC, 	
+        "VL_PATRIM_LIQ" NUMERIC, 	
+        "CAPTC_DIA" NUMERIC, 	
+        "RESG_DIA" NUMERIC, 	
+        "NR_COTST" INTEGER 	
+    );    
+    '''
+    scraperwiki.sqlite.execute(sql_create_table)
+    
+    #scraperwiki.sqlite.execute('DROP INDEX IF EXISTS idx_informe_diario_01;')
+    #scraperwiki.sqlite.execute('DROP INDEX IF EXISTS idx_informe_diario_02;')
+    #scraperwiki.sqlite.execute('DROP INDEX IF EXISTS idx_informe_diario_03;')
 
     print('Criando índices na tabela informe diário...')
     sql_create_idx='''CREATE INDEX IF NOT EXISTS idx_informe_diario_01
-        ON informe_diario (CNPJ_FUNDO);
-    '''
-    scraperwiki.sqlite.execute(sql_create_idx)
-    
-    sql_create_idx='''CREATE INDEX IF NOT EXISTS idx_informe_diario_02
         ON informe_diario (COD_CNPJ);
     '''
     scraperwiki.sqlite.execute(sql_create_idx)
-    
+
+    sql_create_idx='''CREATE INDEX IF NOT EXISTS idx_informe_diario_02
+        ON informe_diario (CNPJ_FUNDO);
+    '''
+    scraperwiki.sqlite.execute(sql_create_idx)
+   
     sql_create_idx='''CREATE INDEX IF NOT EXISTS idx_informe_diario_03
         ON informe_diario (DT_REF);
     '''
