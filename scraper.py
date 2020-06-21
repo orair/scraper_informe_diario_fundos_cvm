@@ -31,20 +31,42 @@ import bizdays
 def executa_scraper(skip_informacoes_cadastrais=False, skip_informe_diario=False, ano_inicial=2019):
     init()
 
-    if (not skip_informacoes_cadastrais):
-        executa_scraper_dados_cadastrais()
+    #if (not skip_informacoes_cadastrais):
+    #    executa_scraper_dados_cadastrais()
+
    
     if (not skip_informe_diario):
         executa_scraper_informe_diario(ano_inicial)
+
+
 
 def executa_scraper_informe_diario(ano_inicial):
     periodos=obtem_periodos(ano_inicial)
     for periodo in periodos: 
         informe_diario_df=captura_arquivo(periodo)
+        informe_diario_df.sort_values(by=['COD_CNPJ', 'DT_REF'])
+        df2 = recupera_informe_diario(periodo)
+        print(informe_diario_df.columns)
+        print(df2.columns)
+        existe_dados_origem=(informe_diario_df is not None \
+            and not informe_diario_df.empty)
+        dados_diferentes_destino=(df2.empty or (not informe_diario_df.equals(df2)))
         # Verifica se recebeu os dados ok
-        if informe_diario_df is not None and not informe_diario_df.empty:
+        # E se os dados já não foram inseridos na tabela com sucesso
+        if  existe_dados_origem and dados_diferentes_destino:
+            #print ('existe dados origem: ', existe_dados_origem)
+            #print ('dados diferentes destino: ', existe_dados_origem)
+            #print ('size origem: ', len(informe_diario_df.index))
+            #print ('size destino: ', len(df2.index))
+            
             print(f'Salvando dados obtidos com {len(informe_diario_df.index)} registros.')
             salva_periodo(informe_diario_df, periodo)
+
+def recupera_informe_diario(periodo):
+    query=f"COD_CNPJ, DT_REF, CNPJ_FUNDO, DT_COMPTC, VL_TOTAL, VL_QUOTA, VL_PATRIM_LIQ, CAPTC_DIA, RESG_DIA, NR_COTST from informe_diario where strftime('%Y%m', DT_REF) = '{periodo}' order by COD_CNPJ, DT_REF"
+    result=scraperwiki.sql.select(query)
+    df=pd.DataFrame(result)
+    return df
 
 def captura_arquivo(periodo):
     base_url = f'http://dados.cvm.gov.br/dados/FI/DOC/INF_DIARIO/DADOS/'
@@ -109,7 +131,7 @@ def salva_periodo(informe_diario_df, periodo):
     if informe_diario_df is None or informe_diario_df.empty:
         print('Recebeu dados vazios!')
         return False
-
+  
     try:
         for row in informe_diario_df.to_dict('records'):
             scraperwiki.sqlite.save(unique_keys=['COD_CNPJ', 'DT_REF'], data=row, table_name='informe_diario')
@@ -348,26 +370,18 @@ def init_database():
     #    columns=scraperwiki.sqlite.execute('PRAGMA index_info('+idx_name+');')
     #    print('columns: ', columns)
 
+    sql_create_view='''CREATE VIEW IF NOT EXISTS ultima_data(DT_REF) as select max(d.DT_REF) from informe_diario d'''
+    scraperwiki.sqlite.execute(sql_create_view)
+
     sql_create_view='''
-        CREATE VIEW IF NOT EXISTS ultima_cota(
-            COD_CNPJ, 
-            CNPJ_FUNDO, 
-            DENOM_SOCIAL, 
-            DT_REF, 
-            VL_TOTAL, 
-            VL_QUOTA,
-            VL_PATRIM_LIQ, 
-            CAPTC_DIA, 
-            RESG_DIA, 
-            NR_COTST
-        ) 
-        AS select COD_CNPJ, CNPJ_FUNDO, DENOM_SOCIAL, i.DT_REF, i.VL_TOTAL, i.VL_QUOTA, i.VL_PATRIM_LIQ, i.CAPTC_DIA, i.RESG_DIA, i.NR_COTST
+        CREATE VIEW IF NOT EXISTS ultima_quota(
+            COD_CNPJ, CNPJ_FUNDO, DENOM_SOCIAL, 
+            DT_REF, VL_QUOTA) AS select COD_CNPJ, CNPJ_FUNDO, DENOM_SOCIAL, i.DT_REF, i.VL_QUOTA
         FROM dados_cadastrais c
         inner join informe_diario d on (d.COD_CNPJ=c.COD_CNPJ)
-        where d.DT_REF IN (select max(d2.DT_REF) from informe_diario d2);
+        where d.DT_REF IN (select DT_REF from ultima_data u);
     '''
-    #scraperwiki.sqlite.execute(sql_create_view)
-
+    scraperwiki.sqlite.execute(sql_create_view)
 
 def captura_arquivo_composicao_carteira(periodo):
     periodo=202005
