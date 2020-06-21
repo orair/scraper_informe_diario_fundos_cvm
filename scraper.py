@@ -31,8 +31,8 @@ import bizdays
 def executa_scraper(skip_informacoes_cadastrais=False, skip_informe_diario=False, ano_inicial=2019):
     init()
 
-    #if (not skip_informacoes_cadastrais):
-    #    executa_scraper_dados_cadastrais()
+    if (not skip_informacoes_cadastrais):
+        executa_scraper_dados_cadastrais()
    
     if (not skip_informe_diario):
         executa_scraper_informe_diario(ano_inicial)
@@ -347,6 +347,27 @@ def init_database():
     #    print(idx_name)
     #    columns=scraperwiki.sqlite.execute('PRAGMA index_info('+idx_name+');')
     #    print('columns: ', columns)
+
+    sql_create_view='''
+        CREATE VIEW IF NOT EXISTS ultima_cota(
+            COD_CNPJ, 
+            CNPJ_FUNDO, 
+            DENOM_SOCIAL, 
+            DT_REF, 
+            VL_TOTAL, 
+            VL_QUOTA,
+            VL_PATRIM_LIQ, 
+            CAPTC_DIA, 
+            RESG_DIA, 
+            NR_COTST
+        ) 
+        AS select COD_CNPJ, CNPJ_FUNDO, DENOM_SOCIAL, i.DT_REF, i.VL_TOTAL, i.VL_QUOTA, i.VL_PATRIM_LIQ, i.CAPTC_DIA, i.RESG_DIA, i.NR_COTST
+        FROM dados_cadastrais c
+        inner join informe_diario d on (d.COD_CNPJ=c.COD_CNPJ)
+        where d.DT_REF IN (select max(d2.DT_REF) from informe_diario d2);
+    '''
+    scraperwiki.sqlite.execute(sql_create_view)
+
 
 def captura_arquivo_composicao_carteira(periodo):
     periodo=202005
