@@ -1,6 +1,7 @@
 
 # -*- coding: utf-8 -*-
 import os
+from pathlib import Path
 # morph.io requires this db filename, but scraperwiki doesn't nicely
 # expose a way to alter this. So we'll fiddle our environment ourselves
 # before our pipeline modules load.
@@ -12,6 +13,9 @@ import scraperwiki
 import pandas as pd
 import urllib
 import shutil
+import zipfile
+import requests
+import bizdays
 
 @click.command("Gerenciador do Scraper dos Informes Diários de Fundos de Investimentos da CVM")
 @click.option('--skip_informacoes_cadastrais', 
@@ -25,11 +29,11 @@ import shutil
                     os.environ.get('SCRAPER_INFORME_CVM_ANO_INICIAL', 2019), 
                 show_default="Variável de ambiente SCRAPER_INFORME_DIARIO_CVM_ANO_INICIAL ou o valor padrão 2018")
 def executa_scraper(skip_informacoes_cadastrais=False, skip_informe_diario=False, ano_inicial=2019):
-    init_database()
+    init()
 
     if (not skip_informacoes_cadastrais):
         executa_scraper_dados_cadastrais()
-
+   
     if (not skip_informe_diario):
         executa_scraper_informe_diario(ano_inicial)
 
@@ -43,17 +47,19 @@ def executa_scraper_informe_diario(ano_inicial):
             salva_periodo(informe_diario_df, periodo)
 
 def captura_arquivo(periodo):
-    url = f'http://dados.cvm.gov.br/dados/FI/DOC/INF_DIARIO/DADOS/inf_diario_fi_{periodo}.csv'
+    base_url = f'http://dados.cvm.gov.br/dados/FI/DOC/INF_DIARIO/DADOS/'
+    filename=f'inf_diario_fi_{periodo}.csv'
+
+    print(f'Verifica necessidade de download dos informes diários de {periodo}')
+    _download_file(base_url, filename)
 
     try:
-        print(f'Iniciando captura do arquivo de informe diário para o período {periodo} ({url})...')
-        
         # Realiza a leitura dos dados como csv
         # O delimitador dos csvs da CVM é o ';'
         # Como os dados estão salvos em ISO-8859-1, 
         # é necessário alterar o encoding durante a leitura dos dados
         informe_diario_df = pd.read_csv(
-            url,
+            filename,
             sep=';',
             encoding='latin1'
         )
@@ -124,7 +130,16 @@ def salva_periodo(informe_diario_df, periodo):
         return None
 
 def executa_scraper_dados_cadastrais():
-    periodo = (datetime.today()- timedelta(days=7)).strftime('%Y%m%d')
+    from bizdays import Calendar
+    cal = Calendar.load('feriados_nacionais_ANBIMA.csv')
+    
+    # tentaremos obter dados cadastrais de três dias atrás
+    periodo = (datetime.today()- timedelta(days=3))
+    while not cal.isbizday(periodo):
+        periodo = periodo - datetime.timedelta(days=1)    
+
+    periodo = periodo.strftime('%Y%m%d')
+    print (f'Serão obtidos os dados cadastrais publicados pela CVM em {periodo}')
     df = captura_arquivo_dados_cadastrais(periodo)
     if df is None or df.empty:
         print('Recebeu dados vazios!')
@@ -132,27 +147,31 @@ def executa_scraper_dados_cadastrais():
     return salva_dados_cadastrais(df)
 
 def captura_arquivo_dados_cadastrais(periodo):
-    url = f'http://dados.cvm.gov.br/dados/FI/CAD/DADOS/inf_cadastral_fi_{periodo}.csv'
+    base_url = f'http://dados.cvm.gov.br/dados/FI/CAD/DADOS/'
+    filename=f'inf_cadastral_fi_{periodo}.csv'
 
-    print(f'Iniciando download dos dados cadastrais dos fundos de investimento a partir do arquivo {url}')
+    print(f'Verifica necessidade de download dos dados cadastrais dos fundos de investimento')
+    _download_file(base_url, filename)
 
+    df = None
     try:
         # Realiza a leitura dos dados como csv
         # O delimitador dos csvs da CVM é o ';'
         # Como os dados estão salvos em ISO-8859-1, 
         # é necessário alterar o encoding durante a leitura dos dados
         df = pd.read_csv(
-            url,
+            filename,
             sep=';',
             encoding='latin1'
         )
+        #print(df.head())
     except (IOError, urllib.error.HTTPError) as err:        
-        print('Falha na leitura do arquivo ', url ,'...', err)
+        print('Falha na leitura do arquivo ', filename, '...', err)
         print(type(err))    # the exception instance
         print(err.args)     # arguments stored in .args
         return None
     except Exception as err:
-        print('Erro ao baixar arquivo', url, '...', err)
+        print('Erro ao ler arquivo localmente', filename, '...', err)
         print(type(err))    # the exception instance
         print(err.args)     # arguments stored in .args
         return None
@@ -203,6 +222,9 @@ def salva_dados_cadastrais(df):
         print(type(err))    # the exception instance
         print(err.args)     # arguments stored in .args
         return None
+
+def init():
+    init_database()
 
 def init_database():
     """ Será necessário criar a tabela inicialmente pois o SQlite infere os tipos errados
@@ -262,8 +284,75 @@ def init_database():
     '''
     scraperwiki.sqlite.execute(sql_create_idx_02)
 
+def captura_arquivo_composicao_carteira(periodo):
+    periodo=202005
+    base_url = f'http://dados.cvm.gov.br/dados/FI/DOC/CDA/DADOS/'
+    local_filename=f'cda_fi_{periodo}.zip'
+    
+    #blc1_filename=f'cda_fi_BLC_1_{periodo}.csv'
+    blc_filenames=[]
+    for x in range(1, 9):
+        blc_filenames.append(f'cda_fi_BLC_{x}_{periodo}.csv')
+
+    print(f'Iniciando download das composições das carteiras de fundos de investimento')
+    _download_file(base_url, local_filename)
+    
+    cda_data_df=[];
+    with zipfile.ZipFile(local_filename) as z:
+        for filename in blc_filenames:
+            with z.open(filename) as f:
+                # Realiza a leitura dos dados como csv
+                # O delimitador dos csvs da CVM é o ';'
+                # Como os dados estão salvos em ISO-8859-1, 
+                # é necessário alterar o encoding durante a leitura dos dados
+                df = pd.read_csv(
+                    f, 
+                    sep=';',
+                    encoding='latin1'
+                )
+                #print(df.head())    # print the first 5 rows
+                print(f'Foram lidos {df.size} registros do arquivo {filename}.')
+                cda_data_df.append(df)
+ 
+    print(f'Total de dataframes obtidos: {len(cda_data_df)}')
+    return cda_data_df
+
+def _download_file(base_url, filename):
+    url = f'{base_url}/{filename}'
+    local_filename=f'{filename}'
+    
+    try: 
+        head_request = requests.head(url)
+        if (head_request.status_code!=200):
+            print('Falha ao verificar url...', head_request)
+            return None
+
+        remote_size = int(head_request.headers['Content-Length'])
+        local_path=Path(local_filename)
+        local_size = local_path.stat().st_size if local_path.exists() else -2 
+        
+        if remote_size != local_size:
+            print(f'Downloading file {url} ...')
+            (filename, headers)=urllib.request.urlretrieve(url, local_filename)        
+        else:
+            print(f'Já foi encontrado o arquivo {local_filename} localmente. Não será realizado download.')
+    except (IOError, urllib.error.HTTPError) as err:        
+        print('Falha na leitura do arquivo ', url ,'...', err)
+        print(type(err))    # the exception instance
+        print(err.args)     # arguments stored in .args
+        return None
+    except Exception as err:
+        print('Erro ao baixar arquivo', url, '...', err)
+        print(type(err))    # the exception instance
+        print(err.args)     # arguments stored in .args
+        return None
+
+   
 
 if __name__ == '__main__':
+#    captura_arquivo_composicao_carteira('')
+#    exit()
+
     print (f'variável de ambiente {os.environ.get("SCRAPERWIKI_DATABASE_NAME")}')
     executa_scraper()
 
