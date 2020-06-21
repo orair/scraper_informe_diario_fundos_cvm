@@ -43,7 +43,7 @@ def executa_scraper_informe_diario(ano_inicial):
         informe_diario_df=captura_arquivo(periodo)
         # Verifica se recebeu os dados ok
         if informe_diario_df is not None and not informe_diario_df.empty:
-            print(f'Salvando dados obtidos com {informe_diario_df.size} registros.')
+            print(f'Salvando dados obtidos com {len(informe_diario_df.index)} registros.')
             salva_periodo(informe_diario_df, periodo)
 
 def captura_arquivo(periodo):
@@ -105,24 +105,13 @@ def obtem_periodos(ano_inicial=2018):
     return periodos
 
 def salva_periodo(informe_diario_df, periodo):
-    # scraperwiki.sqlite.save(unique_keys=['name'], data={"name": "susan", "occupation": "software developer"})
-    # 
-    # # An arbitrary query against the database
-    # scraperwiki.sql.select("* from data where 'name'='peter'")
-
-    # You don't have to do things with the ScraperWiki and lxml libraries.
-    # You can use whatever libraries you want: https://morph.io/documentation/python
-    # All that matters is that your final data is written to an SQLite database
-    # called "data.sqlite" in the current working directory which has at least a table
-    # called "data".
-
     if informe_diario_df is None or informe_diario_df.empty:
         print('Recebeu dados vazios!')
         return False
 
     try:
         for row in informe_diario_df.to_dict('records'):
-            scraperwiki.sqlite.save(unique_keys=informe_diario_df.columns.values.tolist(), data=row, table_name='informe_diario')
+            scraperwiki.sqlite.save(unique_keys=['COD_CNPJ', 'DT_REF'], data=row, table_name='informe_diario')
     except Exception as err:
         print(f'Falha ao salvar registros no banco de dados para o período {periodo}', err)
         print(type(err))    # the exception instance
@@ -176,7 +165,7 @@ def captura_arquivo_dados_cadastrais(periodo):
         print(err.args)     # arguments stored in .args
         return None
 
-    print(f'Foram lidos {df.size} registros do arquivos.')
+    print(f'Foram lidos {len(df.index)} registros do arquivos.')
 
     # Filtra por situações dos fundos
     #    CANCELADA
@@ -185,7 +174,7 @@ def captura_arquivo_dados_cadastrais(periodo):
     situacoesDescartadas=['CANCELADA', 'FASE PRÉ-OPERACIONAL']
     df=df[~df.SIT.isin(situacoesDescartadas)]
 
-    print(f'Após o filtros dos fundos cancelados ou em fase pré-operacional, obteve-se {df.size} fundos.')
+    print(f'Após o filtros dos fundos cancelados ou em fase pré-operacional, obteve-se {len(df.index)} fundos.')
 
     # Cria um campo só com os números do CNPJ
     df['COD_CNPJ'] = df['CNPJ_FUNDO'].str.replace(r'\D+', '').str.zfill(14)
@@ -197,26 +186,13 @@ def captura_arquivo_dados_cadastrais(periodo):
     return df
 
 def salva_dados_cadastrais(df):
-    # scraperwiki.sqlite.save(unique_keys=['name'], data={"name": "susan", "occupation": "software developer"})
-    # 
-    # # An arbitrary query against the database
-    # scraperwiki.sql.select("* from data where 'name'='peter'")
-
-    # You don't have to do things with the ScraperWiki and lxml libraries.
-    # You can use whatever libraries you want: https://morph.io/documentation/python
-    # All that matters is that your final data is written to an SQLite database
-    # called "data.sqlite" in the current working directory which has at least a table
-    # called "data".
-
     if df is None or df.empty:
         print('Recebeu dados cadastrais vazios!')
         return False
 
-    #print(scraperwiki.sql.show_tables())
-   
     try:
         for row in df.to_dict('records'):
-            scraperwiki.sqlite.save(unique_keys=df.columns.values.tolist(), data=row, table_name='dados_cadastrais')
+            scraperwiki.sqlite.save(unique_keys=['COD_CNPJ'], data=row, table_name='dados_cadastrais')
     except Exception as err:
         print(f'Falha ao salvar registros no banco de dados dos dados cadastrais dos fundos', err)
         print(type(err))    # the exception instance
@@ -382,7 +358,7 @@ def captura_arquivo_composicao_carteira(periodo):
                     encoding='latin1'
                 )
                 #print(df.head())    # print the first 5 rows
-                print(f'Foram lidos {df.size} registros do arquivo {filename}.')
+                print(f'Foram lidos {len(df.index)} registros do arquivo {filename}.')
                 cda_data_df.append(df)
  
     print(f'Total de dataframes obtidos: {len(cda_data_df)}')
