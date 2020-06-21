@@ -31,8 +31,8 @@ import bizdays
 def executa_scraper(skip_informacoes_cadastrais=False, skip_informe_diario=False, ano_inicial=2019):
     init()
 
-    if (not skip_informacoes_cadastrais):
-        executa_scraper_dados_cadastrais()
+    #if (not skip_informacoes_cadastrais):
+    #    executa_scraper_dados_cadastrais()
    
     if (not skip_informe_diario):
         executa_scraper_informe_diario(ano_inicial)
@@ -58,7 +58,7 @@ def captura_arquivo(periodo):
         # O delimitador dos csvs da CVM é o ';'
         # Como os dados estão salvos em ISO-8859-1, 
         # é necessário alterar o encoding durante a leitura dos dados
-        informe_diario_df = pd.read_csv(
+        df = pd.read_csv(
             filename,
             sep=';',
             encoding='latin1'
@@ -74,11 +74,12 @@ def captura_arquivo(periodo):
         print(err.args)     # arguments stored in .args
         return None
 
-    # Cria um campo só com os números do CNPJ
-    informe_diario_df['COD_CNPJ'] = informe_diario_df['CNPJ_FUNDO'].str.replace(r'\D+', '').str.zfill(14)
-    informe_diario_df['DT_REF'] = pd.to_datetime(informe_diario_df['DT_COMPTC'], errors='coerce').dt.strftime('%Y-%m-%d')
-    
-    return informe_diario_df
+    # Cria um campo só com os números do CNPJ na primeira coluna
+    df.insert(0, 'COD_CNPJ', df['CNPJ_FUNDO'].str.replace(r'\D+', '').str.zfill(14))
+    # Cria um campo com a data formatada na segunda coluna
+    df.insert(1, 'DT_REF', pd.to_datetime(df['DT_COMPTC'], errors='coerce', format='%Y-%m-%d'))
+
+    return df
 
 def obtem_periodos(ano_inicial=2018):
     periodos=[]
@@ -295,7 +296,7 @@ def init_database():
         "COD_CNPJ" TEXT, 	
         "CNPJ_FUNDO" TEXT, 	
         "DT_REF" DATE, 	
-        "DT_COMPTC" DATE, 	
+        "DT_COMPTC" TEXT, 	
         "VL_TOTAL" NUMERIC, 	
         "VL_QUOTA" NUMERIC, 	
         "VL_PATRIM_LIQ" NUMERIC, 	
