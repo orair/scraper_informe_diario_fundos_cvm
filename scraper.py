@@ -174,7 +174,7 @@ def captura_arquivo_dados_cadastrais(periodo):
     situacoesDescartadas=['CANCELADA', 'FASE PRÉ-OPERACIONAL']
     df=df[~df.SIT.isin(situacoesDescartadas)]
 
-    print(f'Após o filtros dos fundos cancelados ou em fase pré-operacional, obteve-se {len(df.index)} fundos.')
+    print(f'Após o filtro dos fundos cancelados ou em fase pré-operacional, obteve-se {len(df.index)} fundos.')
 
     # Cria um campo só com os números do CNPJ
     df['COD_CNPJ'] = df['CNPJ_FUNDO'].str.replace(r'\D+', '').str.zfill(14)
@@ -250,12 +250,12 @@ def init_database():
     scraperwiki.sqlite.execute(sql_create_table_dados_cadastrais)
 
     print('Criando índices na tabela dados cadastrais...')
-    sql_create_idx='''CREATE INDEX IF NOT EXISTS idx_dados_cadastrais_01
+    sql_create_idx='''CREATE UNIQUE INDEX IF NOT EXISTS idx_dados_cadastrais_01
         ON dados_cadastrais (CNPJ_FUNDO);
     '''
     scraperwiki.sqlite.execute(sql_create_idx)
 
-    sql_create_idx='''CREATE INDEX IF NOT EXISTS idx_dados_cadastrais_02
+    sql_create_idx='''CREATE UNIQUE INDEX IF NOT EXISTS idx_dados_cadastrais_02
         ON dados_cadastrais (COD_CNPJ);
     '''
     scraperwiki.sqlite.execute(sql_create_idx)
@@ -313,12 +313,12 @@ def init_database():
         ON informe_diario (DT_COMPTC);
     '''
     scraperwiki.sqlite.execute(sql_create_idx)
-    sql_create_idx='''CREATE INDEX IF NOT EXISTS idx_informe_diario_05
+    sql_create_idx='''CREATE UNIQUE INDEX IF NOT EXISTS idx_informe_diario_05
         ON informe_diario (COD_CNPJ, DT_REF);
     '''
     scraperwiki.sqlite.execute(sql_create_idx)
 
-    sql_create_idx='''CREATE INDEX IF NOT EXISTS idx_informe_diario_06
+    sql_create_idx='''CREATE UNIQUE INDEX IF NOT EXISTS idx_informe_diario_06
         ON informe_diario (CNPJ_FUNDO, DT_REF);
     '''
     scraperwiki.sqlite.execute(sql_create_idx)
