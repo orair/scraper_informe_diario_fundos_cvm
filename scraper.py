@@ -64,12 +64,12 @@ def captura_arquivo(periodo):
             encoding='latin1'
         )
     except (IOError, urllib.error.HTTPError) as err:        
-        print('Falha na leitura do arquivo ', url ,'...', err)
+        print('Falha na leitura do arquivo ', filename ,'...', err)
         print(type(err))    # the exception instance
         print(err.args)     # arguments stored in .args
         return None
     except Exception as err:
-        print('Erro ao baixar arquivo', url, '...', err)
+        print('Erro ao baixar arquivo', filename, '...', err)
         print(type(err))    # the exception instance
         print(err.args)     # arguments stored in .args
         return None
@@ -366,7 +366,7 @@ def init_database():
         inner join informe_diario d on (d.COD_CNPJ=c.COD_CNPJ)
         where d.DT_REF IN (select max(d2.DT_REF) from informe_diario d2);
     '''
-    scraperwiki.sqlite.execute(sql_create_view)
+    #scraperwiki.sqlite.execute(sql_create_view)
 
 
 def captura_arquivo_composicao_carteira(periodo):
