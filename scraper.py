@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 import click
 import scraperwiki
 import pandas as pd
-import urllib
+from six.moves import urllib
 import shutil
 import zipfile
 import requests
@@ -273,16 +273,87 @@ def init_database():
 
     scraperwiki.sqlite.execute(sql_create_table_dados_cadastrais)
 
-    print('Criando índices na tabela informe diario...')
-    sql_create_idx_01='''CREATE INDEX IF NOT EXISTS idx_informe_diario_01 
+    print('Criando índices na tabela dados cadastrais...')
+    sql_create_idx='''CREATE INDEX IF NOT EXISTS idx_dados_cadastrais_01
+        ON dados_cadastrais (CNPJ_FUNDO);
+    '''
+    scraperwiki.sqlite.execute(sql_create_idx)
+
+    sql_create_idx='''CREATE INDEX IF NOT EXISTS idx_dados_cadastrais_02
+        ON dados_cadastrais (COD_CNPJ);
+    '''
+    scraperwiki.sqlite.execute(sql_create_idx)
+
+    sql_create_idx='''CREATE INDEX IF NOT EXISTS idx_dados_cadastrais_03
+        ON dados_cadastrais (DENOM_SOCIAL);
+    '''
+    scraperwiki.sqlite.execute(sql_create_idx)
+    
+    sql_create_idx='''CREATE INDEX IF NOT EXISTS idx_dados_cadastrais_04
+        ON dados_cadastrais (SIT);
+    '''
+    scraperwiki.sqlite.execute(sql_create_idx)
+ 
+    sql_create_idx='''CREATE INDEX IF NOT EXISTS idx_dados_cadastrais_05
+        ON dados_cadastrais (CLASSE);
+    '''
+    scraperwiki.sqlite.execute(sql_create_idx)
+ 
+    sql_create_idx='''CREATE INDEX IF NOT EXISTS idx_dados_cadastrais_06
+        ON dados_cadastrais (CNPJ_ADMIN);
+    '''
+    scraperwiki.sqlite.execute(sql_create_idx)
+ 
+    sql_create_idx='''CREATE INDEX IF NOT EXISTS idx_dados_cadastrais_07
+        ON dados_cadastrais (CPF_CNPJ_GESTOR);
+    '''
+    scraperwiki.sqlite.execute(sql_create_idx)
+
+    sql_create_idx='''CREATE INDEX IF NOT EXISTS idx_dados_cadastrais_08
+        ON dados_cadastrais (CNPJ_CONTROLADOR);
+    '''
+    scraperwiki.sqlite.execute(sql_create_idx)
+ 
+    scraperwiki.sqlite.execute('DROP INDEX IF EXISTS idx_informe_diario_01;')
+    scraperwiki.sqlite.execute('DROP INDEX IF EXISTS idx_informe_diario_02;')
+    scraperwiki.sqlite.execute('DROP INDEX IF EXISTS idx_informe_diario_03;')
+
+    print('Criando índices na tabela informe diário...')
+    sql_create_idx='''CREATE INDEX IF NOT EXISTS idx_informe_diario_01
+        ON informe_diario (CNPJ_FUNDO);
+    '''
+    scraperwiki.sqlite.execute(sql_create_idx)
+    
+    sql_create_idx='''CREATE INDEX IF NOT EXISTS idx_informe_diario_02
+        ON informe_diario (COD_CNPJ);
+    '''
+    scraperwiki.sqlite.execute(sql_create_idx)
+    
+    sql_create_idx='''CREATE INDEX IF NOT EXISTS idx_informe_diario_03
+        ON informe_diario (DT_REF);
+    '''
+    scraperwiki.sqlite.execute(sql_create_idx)
+    sql_create_idx='''CREATE INDEX IF NOT EXISTS idx_informe_diario_04
+        ON informe_diario (DT_COMPTC);
+    '''
+    scraperwiki.sqlite.execute(sql_create_idx)
+    sql_create_idx='''CREATE INDEX IF NOT EXISTS idx_informe_diario_05
         ON informe_diario (COD_CNPJ, DT_REF);
     '''
-    scraperwiki.sqlite.execute(sql_create_idx_01)
+    scraperwiki.sqlite.execute(sql_create_idx)
 
-    sql_create_idx_02='''CREATE INDEX IF NOT EXISTS idx_informe_diario_02 
+    sql_create_idx='''CREATE INDEX IF NOT EXISTS idx_informe_diario_06
         ON informe_diario (CNPJ_FUNDO, DT_REF);
     '''
-    scraperwiki.sqlite.execute(sql_create_idx_02)
+    scraperwiki.sqlite.execute(sql_create_idx)
+
+    lista_indices=scraperwiki.sqlite.execute('PRAGMA index_list(''informe_diario'');')
+    print(lista_indices)
+    #for idx in lista_indices:
+    #    idx_name=idx
+    #    print(idx_name)
+    #    columns=scraperwiki.sqlite.execute('PRAGMA index_info('+idx_name+');')
+    #    print('columns: ', columns)
 
 def captura_arquivo_composicao_carteira(periodo):
     periodo=202005
