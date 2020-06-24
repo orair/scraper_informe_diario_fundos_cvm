@@ -32,15 +32,12 @@ import sqlalchemy
                 show_default="Variável de ambiente SCRAPER_INFORME_DIARIO_CVM_ANO_INICIAL ou o valor padrão 2018")
 def executa_scraper(skip_informacoes_cadastrais=False, skip_informe_diario=False, ano_inicial=2019):
     init()
-
-    #if (not skip_informacoes_cadastrais):
-    #    executa_scraper_dados_cadastrais()
-
    
     if (not skip_informe_diario):
         executa_scraper_informe_diario(ano_inicial)
 
-
+    if (not skip_informacoes_cadastrais):
+        executa_scraper_dados_cadastrais()
 
 def executa_scraper_informe_diario(ano_inicial):
     periodos=obtem_periodos(ano_inicial)
@@ -365,7 +362,7 @@ def init_database():
     scraperwiki.sqlite.execute(sql_create_idx)
 
     lista_indices=scraperwiki.sqlite.execute('PRAGMA index_list(''informe_diario'');')
-    print(lista_indices)
+    #print(lista_indices)
     #for idx in lista_indices:
     #    idx_name=idx
     #    print(idx_name)
@@ -377,6 +374,7 @@ def init_database():
     sql_create_view='''CREATE VIEW IF NOT EXISTS ultima_data as select max(d.DT_REF) from informe_diario d;'''
     #sql_create_view='''CREATE VIEW IF NOT EXISTS ultima_data(DT_REF) as select max(d.DT_REF) from informe_diario d;'''
     try:
+        print('Criação da view de ultima_data')
         scraperwiki.sqlite.execute(sql_create_view)        
     except (sqlite3.OperationalError, sqlalchemy.exc.OperationalError) as err:        
         print('Falha na criação da view...', err)
@@ -398,6 +396,7 @@ def init_database():
 #        where d.DT_REF IN (select DT_REF from ultima_data u);
 #    '''
     try:
+        print('Criação da view de ultima_quota')
         scraperwiki.sqlite.execute(sql_create_view)        
     except (sqlite3.OperationalError, sqlalchemy.exc.OperationalError) as err:        
         print('Falha na criação da view...', err)
