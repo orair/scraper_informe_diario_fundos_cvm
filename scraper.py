@@ -383,7 +383,7 @@ def init_database():
         print(err.args)     # arguments stored in .args
     
     sql_create_view='''CREATE VIEW IF NOT EXISTS ultima_quota as 
-        select COD_CNPJ, CNPJ_FUNDO, DENOM_SOCIAL, i.DT_REF, i.VL_QUOTA
+        select c.COD_CNPJ, c.CNPJ_FUNDO, c.DENOM_SOCIAL, i.DT_REF, i.VL_QUOTA
         FROM dados_cadastrais c
         inner join informe_diario d on (d.COD_CNPJ=c.COD_CNPJ)
         where d.DT_REF IN (select DT_REF from ultima_data u);
