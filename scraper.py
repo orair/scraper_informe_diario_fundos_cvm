@@ -17,6 +17,7 @@ import zipfile
 import requests
 import bizdays
 import sqlite3
+import sqlalchemy
 
 @click.command("Gerenciador do Scraper dos Informes Diários de Fundos de Investimentos da CVM")
 @click.option('--skip_informacoes_cadastrais', 
@@ -377,7 +378,7 @@ def init_database():
     #sql_create_view='''CREATE VIEW IF NOT EXISTS ultima_data(DT_REF) as select max(d.DT_REF) from informe_diario d;'''
     try:
         scraperwiki.sqlite.execute(sql_create_view)        
-    except (sqlite3.OperationalError) as err:        
+    except (sqlite3.OperationalError, sqlalchemy.exc.OperationalError) as err:        
         print('Falha na criação da view...', err)
         print(type(err))    # the exception instance
         print(err.args)     # arguments stored in .args
@@ -398,7 +399,7 @@ def init_database():
 #    '''
     try:
         scraperwiki.sqlite.execute(sql_create_view)        
-    except (sqlite3.OperationalError) as err:        
+    except (sqlite3.OperationalError, sqlalchemy.exc.OperationalError) as err:        
         print('Falha na criação da view...', err)
         print(type(err))    # the exception instance
         print(err.args)     # arguments stored in .args
