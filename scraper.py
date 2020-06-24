@@ -386,8 +386,8 @@ def init_database():
     sql_create_view='''CREATE VIEW IF NOT EXISTS ultima_quota as 
         select c.COD_CNPJ, c.CNPJ_FUNDO, c.DENOM_SOCIAL, i.DT_REF, i.VL_QUOTA
         FROM dados_cadastrais c
-        inner join informe_diario d on (d.COD_CNPJ=c.COD_CNPJ)
-        where d.DT_REF IN (select DT_REF from ultima_data u);
+        inner join informe_diario i on (c.COD_CNPJ=i.COD_CNPJ)
+        where i.DT_REF IN (select u.DT_REF from ultima_data u);
     '''
 #    sql_create_view='''
 #        CREATE VIEW IF NOT EXISTS ultima_quota(
