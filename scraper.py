@@ -370,17 +370,27 @@ def init_database():
     #    columns=scraperwiki.sqlite.execute('PRAGMA index_info('+idx_name+');')
     #    print('columns: ', columns)
 
-    sql_create_view='''CREATE VIEW IF NOT EXISTS ultima_data(DT_REF) as select max(d.DT_REF) from informe_diario d'''
+    # Evitamos usar a sintaxe que especifica as colunas da view porque
+    # este só foi adicionada à versão do SQLite 3.9.0 (2015-10-14)
+    sql_create_view='''CREATE VIEW IF NOT EXISTS as select max(d.DT_REF) from informe_diario d;'''
+    #sql_create_view='''CREATE VIEW IF NOT EXISTS ultima_data(DT_REF) as select max(d.DT_REF) from informe_diario d;'''
     scraperwiki.sqlite.execute(sql_create_view)
 
     sql_create_view='''
-        CREATE VIEW IF NOT EXISTS ultima_quota(
-            COD_CNPJ, CNPJ_FUNDO, DENOM_SOCIAL, 
-            DT_REF, VL_QUOTA) AS select COD_CNPJ, CNPJ_FUNDO, DENOM_SOCIAL, i.DT_REF, i.VL_QUOTA
+        CREATE VIEW IF NOT EXISTS ultima_quota
+        AS select COD_CNPJ, CNPJ_FUNDO, DENOM_SOCIAL, i.DT_REF, i.VL_QUOTA
         FROM dados_cadastrais c
         inner join informe_diario d on (d.COD_CNPJ=c.COD_CNPJ)
         where d.DT_REF IN (select DT_REF from ultima_data u);
     '''
+#    sql_create_view='''
+#        CREATE VIEW IF NOT EXISTS ultima_quota(
+#            COD_CNPJ, CNPJ_FUNDO, DENOM_SOCIAL, 
+#            DT_REF, VL_QUOTA) AS select COD_CNPJ, CNPJ_FUNDO, DENOM_SOCIAL, i.DT_REF, i.VL_QUOTA
+#        FROM dados_cadastrais c
+#        inner join informe_diario d on (d.COD_CNPJ=c.COD_CNPJ)
+#        where d.DT_REF IN (select DT_REF from ultima_data u);
+#    '''
     scraperwiki.sqlite.execute(sql_create_view)
 
 def captura_arquivo_composicao_carteira(periodo):
@@ -449,8 +459,8 @@ def _download_file(base_url, filename):
    
 
 if __name__ == '__main__':
-#    captura_arquivo_composicao_carteira('')
-#    exit()
+    #    captura_arquivo_composicao_carteira('')
+    #    exit()
 
     print (f'variável de ambiente {os.environ.get("SCRAPERWIKI_DATABASE_NAME")}')
     executa_scraper()
