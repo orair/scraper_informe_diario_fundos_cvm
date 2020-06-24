@@ -16,6 +16,7 @@ import shutil
 import zipfile
 import requests
 import bizdays
+import sqlite3
 
 @click.command("Gerenciador do Scraper dos Informes Diários de Fundos de Investimentos da CVM")
 @click.option('--skip_informacoes_cadastrais', 
@@ -372,13 +373,17 @@ def init_database():
 
     # Evitamos usar a sintaxe que especifica as colunas da view porque
     # este só foi adicionada à versão do SQLite 3.9.0 (2015-10-14)
-    sql_create_view='''CREATE VIEW IF NOT EXISTS as select max(d.DT_REF) from informe_diario d;'''
+    sql_create_view='''CREATE VIEW IF NOT EXISTS ultima_data as select max(d.DT_REF) from informe_diario d;'''
     #sql_create_view='''CREATE VIEW IF NOT EXISTS ultima_data(DT_REF) as select max(d.DT_REF) from informe_diario d;'''
-    scraperwiki.sqlite.execute(sql_create_view)
-
-    sql_create_view='''
-        CREATE VIEW IF NOT EXISTS ultima_quota
-        AS select COD_CNPJ, CNPJ_FUNDO, DENOM_SOCIAL, i.DT_REF, i.VL_QUOTA
+    try:
+        scraperwiki.sqlite.execute(sql_create_view)        
+    except (sqlite3.OperationalError) as err:        
+        print('Falha na criação da view...', err)
+        print(type(err))    # the exception instance
+        print(err.args)     # arguments stored in .args
+    
+    sql_create_view='''CREATE VIEW IF NOT EXISTS ultima_quota as 
+        select COD_CNPJ, CNPJ_FUNDO, DENOM_SOCIAL, i.DT_REF, i.VL_QUOTA
         FROM dados_cadastrais c
         inner join informe_diario d on (d.COD_CNPJ=c.COD_CNPJ)
         where d.DT_REF IN (select DT_REF from ultima_data u);
@@ -391,7 +396,12 @@ def init_database():
 #        inner join informe_diario d on (d.COD_CNPJ=c.COD_CNPJ)
 #        where d.DT_REF IN (select DT_REF from ultima_data u);
 #    '''
-    scraperwiki.sqlite.execute(sql_create_view)
+    try:
+        scraperwiki.sqlite.execute(sql_create_view)        
+    except (sqlite3.OperationalError) as err:        
+        print('Falha na criação da view...', err)
+        print(type(err))    # the exception instance
+        print(err.args)     # arguments stored in .args
 
 def captura_arquivo_composicao_carteira(periodo):
     periodo=202005
