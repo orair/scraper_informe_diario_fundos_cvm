@@ -42,22 +42,27 @@ def executa_scraper(skip_informacoes_cadastrais=False, skip_informe_diario=False
 def executa_scraper_informe_diario(ano_inicial):
     periodos=obtem_periodos(ano_inicial)
     for periodo in periodos: 
+        df2 = None
         informe_diario_df=captura_arquivo(periodo)
-        informe_diario_df.sort_values(by=['COD_CNPJ', 'DT_REF'])
-        df2 = recupera_informe_diario(periodo)
-        print(informe_diario_df.columns)
-        print(df2.columns)
-        existe_dados_origem=(informe_diario_df is not None \
+        
+        if not informe_diario_df.empty:
+            informe_diario_df.sort_values(by=['COD_CNPJ', 'DT_REF'])
+            df2 = recupera_informe_diario(periodo)
+            print(informe_diario_df.columns)
+            print(df2.columns)
+            existe_dados_origem=(informe_diario_df is not None \
             and not informe_diario_df.empty)
-        dados_diferentes_destino=(df2.empty or (not informe_diario_df.equals(df2)))
-        # Verifica se recebeu os dados ok
-        # E se os dados já não foram inseridos na tabela com sucesso
+            dados_diferentes_destino=(df2.empty or (not informe_diario_df.equals(df2)))
+            # Verifica se recebeu os dados ok
+            # E se os dados já não foram inseridos na tabela com sucesso
+        else:
+            existe_dados_origem = False    
         if  existe_dados_origem and dados_diferentes_destino:
             #print ('existe dados origem: ', existe_dados_origem)
             #print ('dados diferentes destino: ', existe_dados_origem)
             #print ('size origem: ', len(informe_diario_df.index))
             #print ('size destino: ', len(df2.index))
-            
+        
             print(f'Salvando dados obtidos com {len(informe_diario_df.index)} registros.')
             salva_periodo(informe_diario_df, periodo)
 
@@ -88,12 +93,14 @@ def captura_arquivo(periodo):
         print('Falha na leitura do arquivo ', filename ,'...', err)
         print(type(err))    # the exception instance
         print(err.args)     # arguments stored in .args
-        return None
+        df_empty = pd.DataFrame({'A' : []})
+        return df_empty
     except Exception as err:
         print('Erro ao baixar arquivo', filename, '...', err)
         print(type(err))    # the exception instance
         print(err.args)     # arguments stored in .args
-        return None
+        df_empty = pd.DataFrame({'A' : []})
+        return df_empty
 
     # Cria um campo só com os números do CNPJ na primeira coluna
     df.insert(0, 'COD_CNPJ', df['CNPJ_FUNDO'].str.replace(r'\D+', '').str.zfill(14))
