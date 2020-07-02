@@ -372,7 +372,7 @@ def init_database():
     # Evitamos usar a sintaxe que especifica as colunas da view porque
     # este só foi adicionada à versão do SQLite 3.9.0 (2015-10-14)
     sql_create_view='''CREATE VIEW IF NOT EXISTS ultima_data as select max(d.DT_REF) from informe_diario d;'''
-    #sql_create_view='''CREATE VIEW IF NOT EXISTS ultima_data(DT_REF) as select max(d.DT_REF) from informe_diario d;'''
+    #sql_create_view='''CREATE VIEW IF NOT EXISTS ultima_data(DT_REF) as select max(d.DT_REF) as DT_REF from informe_diario d;'''
     try:
         print('Criação da view de ultima_data')
         scraperwiki.sqlite.execute(sql_create_view)        
