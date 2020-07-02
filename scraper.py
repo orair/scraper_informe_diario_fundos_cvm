@@ -64,7 +64,7 @@ def executa_scraper_informe_diario(ano_inicial):
             #print ('size destino: ', len(df2.index))
         
             print(f'Salvando dados obtidos com {len(informe_diario_df.index)} registros.')
-            salva_periodo(informe_diario_df, periodo)
+            salva_informe_periodo(informe_diario_df, periodo)
 
 def recupera_informe_diario(periodo):
     query=f"COD_CNPJ, DT_REF, CNPJ_FUNDO, DT_COMPTC, VL_TOTAL, VL_QUOTA, VL_PATRIM_LIQ, CAPTC_DIA, RESG_DIA, NR_COTST from informe_diario where strftime('%Y%m', DT_REF) = '{periodo}' order by COD_CNPJ, DT_REF"
@@ -133,14 +133,16 @@ def obtem_periodos(ano_inicial=2018):
 
     return periodos
 
-def salva_periodo(informe_diario_df, periodo):
+def salva_informe_periodo(informe_diario_df, periodo):
     if informe_diario_df is None or informe_diario_df.empty:
         print('Recebeu dados vazios!')
         return False
   
     try:
         for row in informe_diario_df.to_dict('records'):
+            print('Salvando no banco de dados...')
             scraperwiki.sqlite.save(unique_keys=['COD_CNPJ', 'DT_REF'], data=row, table_name='informe_diario')
+            print('Carga no banco de dados finalizada...')
     except Exception as err:
         print(f'Falha ao salvar registros no banco de dados para o período {periodo}', err)
         print(type(err))    # the exception instance
