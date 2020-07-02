@@ -43,9 +43,10 @@ def executa_scraper_informe_diario(ano_inicial):
     periodos=obtem_periodos(ano_inicial)
     for periodo in periodos: 
         df2 = None
-        informe_diario_df=captura_arquivo(periodo)
+        result, informe_diario_df=captura_arquivo_informe(periodo)
         
-        if not informe_diario_df.empty:
+        
+        if not informe_diario_df.empty and result == 1:
             informe_diario_df.sort_values(by=['COD_CNPJ', 'DT_REF'])
             df2 = recupera_informe_diario(periodo)
             print(informe_diario_df.columns)
@@ -72,12 +73,12 @@ def recupera_informe_diario(periodo):
     df=pd.DataFrame(result)
     return df
 
-def captura_arquivo(periodo):
+def captura_arquivo_informe(periodo):
     base_url = f'http://dados.cvm.gov.br/dados/FI/DOC/INF_DIARIO/DADOS/'
     filename=f'inf_diario_fi_{periodo}.csv'
 
     print(f'Verifica necessidade de download dos informes diários de {periodo}')
-    _download_file(base_url, filename)
+    result=_download_file(base_url, filename)
 
     try:
         # Realiza a leitura dos dados como csv
@@ -94,20 +95,20 @@ def captura_arquivo(periodo):
         print(type(err))    # the exception instance
         print(err.args)     # arguments stored in .args
         df_empty = pd.DataFrame({'A' : []})
-        return df_empty
+        return 0, df_empty
     except Exception as err:
         print('Erro ao baixar arquivo', filename, '...', err)
         print(type(err))    # the exception instance
         print(err.args)     # arguments stored in .args
         df_empty = pd.DataFrame({'A' : []})
-        return df_empty
+        return 0, df_empty
 
     # Cria um campo só com os números do CNPJ na primeira coluna
     df.insert(0, 'COD_CNPJ', df['CNPJ_FUNDO'].str.replace(r'\D+', '').str.zfill(14))
     # Cria um campo com a data formatada na segunda coluna
     df.insert(1, 'DT_REF', pd.to_datetime(df['DT_COMPTC'], errors='coerce', format='%Y-%m-%d'))
 
-    return df
+    return result, df
 
 def obtem_periodos(ano_inicial=2018):
     periodos=[]
@@ -466,8 +467,10 @@ def _download_file(base_url, filename):
         if remote_size != local_size:
             print(f'Downloading file {url} ...')
             (filename, headers)=urllib.request.urlretrieve(url, local_filename)        
+            return 1
         else:
             print(f'Já foi encontrado o arquivo {local_filename} localmente. Não será realizado download.')
+            return 2
     except (IOError, urllib.error.HTTPError) as err:        
         print('Falha na leitura do arquivo ', url ,'...', err)
         print(type(err))    # the exception instance
@@ -478,8 +481,6 @@ def _download_file(base_url, filename):
         print(type(err))    # the exception instance
         print(err.args)     # arguments stored in .args
         return None
-
-   
 
 if __name__ == '__main__':
     #    captura_arquivo_composicao_carteira('')
