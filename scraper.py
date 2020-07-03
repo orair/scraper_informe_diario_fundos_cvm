@@ -61,6 +61,7 @@ def executa_scraper_informe_diario(ano_inicial):
             if df2.empty:
                 novos_dados_df=informe_diario_df
             else:
+                print('Iniciando a comparação dos dados recebidos e dos dados já inseridos no banco de dados...')
                 merge_df=pd.merge(informe_diario_df,df2, how='left', indicator=True)
                 novos_dados_df=merge_df[merge_df['_merge']=='left_only']
                 novos_dados_df=novos_dados_df.drop(['_merge'], axis=1)
@@ -501,6 +502,8 @@ def _download_file(base_url, filename):
                     f.write(chunk)
                     progress_bar.update(2048)
             progress_bar.close()
+            print('Download finalizado com sucesso.')
+            
             return 1
         else:
             print(f'Já foi encontrado o arquivo {local_filename} localmente. Não será realizado download.')
