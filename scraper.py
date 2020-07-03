@@ -70,6 +70,8 @@ def executa_scraper_informe_diario(ano_inicial):
             # por registro, só vamos salvar no banco os registros que 
             # já identificarmos que são realmente novos dados 
             salva_informe_periodo(novos_dados_df, periodo)
+        else:
+            print (f'Não foram encontrados novos registros no arquivo para o periodo {periodo}...')
 
 def recupera_informe_diario(periodo):
     query=f"COD_CNPJ, DT_REF, CNPJ_FUNDO, DT_COMPTC, VL_TOTAL, VL_QUOTA, VL_PATRIM_LIQ, CAPTC_DIA, RESG_DIA, NR_COTST from informe_diario where strftime('%Y%m', DT_REF) = '{periodo}' order by COD_CNPJ, DT_REF"
@@ -481,13 +483,24 @@ def _download_file(base_url, filename):
             #print('Falha ao verificar url...', head_request)
             return 404
 
-        remote_size = int(head_request.headers['Content-Length'])
+        remote_size = int(head_request.headers.get('Content-Length', 0))
         local_path=Path(local_filename)
         local_size = local_path.stat().st_size if local_path.exists() else -2 
         
         if remote_size != local_size:
-            print(f'Downloading file {url} ...')
-            (filename, headers)=urllib.request.urlretrieve(url, local_filename)        
+            print(f'Downloading file {url} com o tamanho {remote_size}...')
+            #(filename, headers)=urllib.request.urlretrieve(url, local_filename)
+
+            # Streaming, so we can iterate over the response.
+            r = requests.get(url, stream=True)
+            progress_bar = tqdm.tqdm(
+                total=local_size, unit='B', unit_scale=True, desc=url.split('/')[-1])
+            # Lê o arquivo incrementalmente exibindo uma barra de progresso (tqdm)
+            with open(local_filename, 'wb') as f:
+                for chunk in r.iter_content(chunk_size = 2048):
+                    f.write(chunk)
+                    progress_bar.update(2048)
+            progress_bar.close()
             return 1
         else:
             print(f'Já foi encontrado o arquivo {local_filename} localmente. Não será realizado download.')
