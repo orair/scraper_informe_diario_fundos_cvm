@@ -18,6 +18,7 @@ import requests
 import bizdays
 import sqlite3
 import sqlalchemy
+import tqdm
 
 @click.command("Gerenciador do Scraper dos Informes Diários de Fundos de Investimentos da CVM")
 @click.option('--skip_informacoes_cadastrais', 
@@ -40,32 +41,31 @@ def executa_scraper(skip_informacoes_cadastrais=False, skip_informe_diario=False
         executa_scraper_dados_cadastrais()
 
 def executa_scraper_informe_diario(ano_inicial):
-    periodos=obtem_periodos(ano_inicial)
+    periodos = obtem_periodos(ano_inicial)
     for periodo in periodos: 
         df2 = None
-        result, informe_diario_df=captura_arquivo_informe(periodo)
+        result, informe_diario_df = captura_arquivo_informe(periodo)
         
-        
-        if not informe_diario_df.empty and result == 1:
+        # Caso tenha sido obtida e lido um novo arquivo com sucesso...
+        if not informe_diario_df.empty and result in (1,2):
             informe_diario_df.sort_values(by=['COD_CNPJ', 'DT_REF'])
             df2 = recupera_informe_diario(periodo)
-            print(informe_diario_df.columns)
-            print(df2.columns)
+            df2['DT_REF']=pd.to_datetime(df2['DT_REF'], errors='coerce', format='%Y-%m-%d')
             existe_dados_origem=(informe_diario_df is not None \
             and not informe_diario_df.empty)
-            dados_diferentes_destino=(df2.empty or (not informe_diario_df.equals(df2)))
-            # Verifica se recebeu os dados ok
-            # E se os dados já não foram inseridos na tabela com sucesso
+            existe_dados_diferentes=(df2.empty or (not informe_diario_df.equals(df2)))
+            merge_df=pd.merge(informe_diario_df,df2, how='left', indicator=True)
+            novos_dados_df=merge_df[merge_df['_merge']=='left_only']
+            novos_dados_df=novos_dados_df.drop(['_merge'], axis=1)
         else:
             existe_dados_origem = False    
-        if  existe_dados_origem and dados_diferentes_destino:
-            #print ('existe dados origem: ', existe_dados_origem)
-            #print ('dados diferentes destino: ', existe_dados_origem)
-            #print ('size origem: ', len(informe_diario_df.index))
-            #print ('size destino: ', len(df2.index))
-        
-            print(f'Salvando dados obtidos com {len(informe_diario_df.index)} registros.')
-            salva_informe_periodo(informe_diario_df, periodo)
+        if  existe_dados_origem and existe_dados_diferentes:
+            print (f'Foram encontrados {len(informe_diario_df.index)} registros no arquivo, sendo {len(novos_dados_df.index)} novos registros...')
+            
+            # Como o scraperwiki fornece apenas o save que faz um autocommit 
+            # por registro, só vamos salvar no banco os registros que 
+            # já identificarmos que são realmente novos dados 
+            salva_informe_periodo(novos_dados_df, periodo)
 
 def recupera_informe_diario(periodo):
     query=f"COD_CNPJ, DT_REF, CNPJ_FUNDO, DT_COMPTC, VL_TOTAL, VL_QUOTA, VL_PATRIM_LIQ, CAPTC_DIA, RESG_DIA, NR_COTST from informe_diario where strftime('%Y%m', DT_REF) = '{periodo}' order by COD_CNPJ, DT_REF"
@@ -80,6 +80,14 @@ def captura_arquivo_informe(periodo):
     print(f'Verifica necessidade de download dos informes diários de {periodo}')
     result=_download_file(base_url, filename)
 
+    # No início de meses, ainda não existira o arquivo com as cotas dos meses correntes,
+    # Por isto, vamos retornar simplesmente um dataframe vazio caso não encontre 
+    # o arquivo na url consultada
+    if result == 404:
+        df_empty = pd.DataFrame({'A' : []})
+        print(f'Não foi encontrado o arquivo {filename} no servidor da CVM, se for o início de um mês e o arquivo se referir ao mês atual, isto é esperado...')
+        return 0, df_empty
+        
     try:
         # Realiza a leitura dos dados como csv
         # O delimitador dos csvs da CVM é o ';'
@@ -114,6 +122,7 @@ def obtem_periodos(ano_inicial=2018):
     periodos=[]
 
     today = datetime.today()
+    yesterday = today - timedelta(days=1)
     ano_final = int(today.strftime('%Y'))
     mes_final = int(today.strftime('%m'))
 
@@ -138,12 +147,15 @@ def salva_informe_periodo(informe_diario_df, periodo):
     if informe_diario_df is None or informe_diario_df.empty:
         print('Recebeu dados vazios!')
         return False
-  
+    
     try:
-        for row in informe_diario_df.to_dict('records'):
-            print('Salvando no banco de dados...')
+        print(f'Iniciando inserção no banco de dados de {len(informe_diario_df.index)} registros.')
+        records_list=informe_diario_df.to_dict('records')
+        #for row in records_list:
+        for row in tqdm.tqdm(records_list):
+            #print('linha a ser inserida no banco', row)
             scraperwiki.sqlite.save(unique_keys=['COD_CNPJ', 'DT_REF'], data=row, table_name='informe_diario')
-            print('Carga no banco de dados finalizada...')
+        print('Carga no banco de dados finalizada...')
     except Exception as err:
         print(f'Falha ao salvar registros no banco de dados para o período {periodo}', err)
         print(type(err))    # the exception instance
@@ -457,8 +469,8 @@ def _download_file(base_url, filename):
     try: 
         head_request = requests.head(url)
         if (head_request.status_code!=200):
-            print('Falha ao verificar url...', head_request)
-            return None
+            #print('Falha ao verificar url...', head_request)
+            return 404
 
         remote_size = int(head_request.headers['Content-Length'])
         local_path=Path(local_filename)
