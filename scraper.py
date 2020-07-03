@@ -397,16 +397,20 @@ def init_database():
 
     # Evitamos usar a sintaxe que especifica as colunas da view porque
     # este só foi adicionada à versão do SQLite 3.9.0 (2015-10-14)
-    sql_create_view='''CREATE VIEW IF NOT EXISTS ultima_data as select max(d.DT_REF) from informe_diario d;'''
+
+    sql_drop_view='''DROP VIEW IF EXISTS ultima_data;'''
+    sql_create_view='''CREATE VIEW IF NOT EXISTS ultima_data as select max(d.DT_REF) as DT_REF from informe_diario d;'''
     #sql_create_view='''CREATE VIEW IF NOT EXISTS ultima_data(DT_REF) as select max(d.DT_REF) as DT_REF from informe_diario d;'''
     try:
         print('Criação da view de ultima_data')
+        scraperwiki.sqlite.execute(sql_drop_view)        
         scraperwiki.sqlite.execute(sql_create_view)        
     except (sqlite3.OperationalError, sqlalchemy.exc.OperationalError) as err:        
         print('Falha na criação da view...', err)
         print(type(err))    # the exception instance
         print(err.args)     # arguments stored in .args
     
+    sql_drop_view='''DROP VIEW IF EXISTS ultima_quota;'''
     sql_create_view='''CREATE VIEW IF NOT EXISTS ultima_quota as 
         select c.COD_CNPJ, c.CNPJ_FUNDO, c.DENOM_SOCIAL, i.DT_REF, i.VL_QUOTA
         FROM dados_cadastrais c
@@ -427,6 +431,7 @@ def init_database():
 #    '''
     try:
         print('Criação da view de ultima_quota')
+        scraperwiki.sqlite.execute(sql_drop_view)        
         scraperwiki.sqlite.execute(sql_create_view)        
     except (sqlite3.OperationalError, sqlalchemy.exc.OperationalError) as err:        
         print('Falha na criação da view...', err)
