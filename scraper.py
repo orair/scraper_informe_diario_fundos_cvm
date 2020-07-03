@@ -50,16 +50,20 @@ def executa_scraper_informe_diario(ano_inicial):
         if not informe_diario_df.empty and result in (1,2):
             informe_diario_df.sort_values(by=['COD_CNPJ', 'DT_REF'])
             df2 = recupera_informe_diario(periodo)
-            df2['DT_REF']=pd.to_datetime(df2['DT_REF'], errors='coerce', format='%Y-%m-%d')
+            if not df2.empty:
+                df2['DT_REF']=pd.to_datetime(df2['DT_REF'], errors='coerce', format='%Y-%m-%d')
             existe_dados_origem=(informe_diario_df is not None \
             and not informe_diario_df.empty)
             existe_dados_diferentes=(df2.empty or (not informe_diario_df.equals(df2)))
-            merge_df=pd.merge(informe_diario_df,df2, how='left', indicator=True)
-            novos_dados_df=merge_df[merge_df['_merge']=='left_only']
-            novos_dados_df=novos_dados_df.drop(['_merge'], axis=1)
         else:
             existe_dados_origem = False    
         if  existe_dados_origem and existe_dados_diferentes:
+            if df2.empty:
+                novos_dados_df=informe_diario_df
+            else:
+                merge_df=pd.merge(informe_diario_df,df2, how='left', indicator=True)
+                novos_dados_df=merge_df[merge_df['_merge']=='left_only']
+                novos_dados_df=novos_dados_df.drop(['_merge'], axis=1)
             print (f'Foram encontrados {len(informe_diario_df.index)} registros no arquivo, sendo {len(novos_dados_df.index)} novos registros...')
             
             # Como o scraperwiki fornece apenas o save que faz um autocommit 
