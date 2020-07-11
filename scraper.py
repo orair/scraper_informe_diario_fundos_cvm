@@ -59,18 +59,39 @@ def executa_scraper_informe_diario(ano_inicial):
             existe_dados_origem = False    
         if  existe_dados_origem and existe_dados_diferentes:
             if df2.empty:
-                novos_dados_df=informe_diario_df
+                salva_informe_periodo(informe_diario_df, periodo)
             else:
                 print('Iniciando a comparação dos dados recebidos e dos dados já inseridos no banco de dados...')
-                merge_df=pd.merge(informe_diario_df,df2, how='left', indicator=True)
-                novos_dados_df=merge_df[merge_df['_merge']=='left_only']
-                novos_dados_df=novos_dados_df.drop(['_merge'], axis=1)
-            print (f'Foram encontrados {len(informe_diario_df.index)} registros no arquivo, sendo {len(novos_dados_df.index)} novos registros...')
-            
-            # Como o scraperwiki fornece apenas o save que faz um autocommit 
-            # por registro, só vamos salvar no banco os registros que 
-            # já identificarmos que são realmente novos dados 
-            salva_informe_periodo(novos_dados_df, periodo)
+                novos_dados=[]
+                #print(type(df2), type(informe_diario_df))
+                #list2=df2.values.tolist()
+                #print(list2)
+                #set2=set(df2.values.tolist()) 
+                set2 = set(map(tuple, df2.values.tolist()))
+                set1 = set(map(tuple, informe_diario_df.values.tolist())) 
+                res = list(set2 ^ set1) 
+                novos_dados_df = pd.DataFrame(data=res, columns=informe_diario_df.columns)
+                novos_dados_df.sort_values(by=['COD_CNPJ', 'DT_REF'])
+                #print(novos_dados_df.head())
+                #merge_df=pd.merge(informe_diario_df,df2, how='left', indicator=True)
+                #merge_df=pd.merge_ordered(informe_diario_df, df2, how='left', suffixes=['', '_'])
+                #print('merge finalizado')
+                #print(merge_df.columns)
+                #print(len(merge_df.index), len(informe_diario_df.index))
+                #print(merge_df.head())
+                #del(df2)
+                #del(informe_diario_df)
+                #novos_dados_df=merge_df[merge_df['_merge']=='left_only']
+                #novos_dados_df=novos_dados_df.drop(['_merge'], axis=1)
+
+                #del(merge_df)
+                
+                print (f'Foram encontrados {len(informe_diario_df.index)} registros no arquivo, sendo {len(novos_dados_df.index)} novos registros...')
+                # Como o scraperwiki fornece apenas o save que faz um autocommit 
+                # por registro, só vamos salvar no banco os registros que 
+                # já identificarmos que são realmente novos dados 
+                salva_informe_periodo(novos_dados_df, periodo)
+        
         else:
             print (f'Não foram encontrados novos registros no arquivo para o periodo {periodo}...')
 
@@ -156,12 +177,21 @@ def salva_informe_periodo(informe_diario_df, periodo):
         return False
     
     try:
+        print("Excluindo índices para inserção mais eficiente...")
+        drop_indexes_informe_diario()
         print(f'Iniciando inserção no banco de dados de {len(informe_diario_df.index)} registros.')
+        
         records_list=informe_diario_df.to_dict('records')
+        chunks = (len(records_list) - 1) // 1000 + 1
+        for i in tqdm.tqdm(range(chunks)):
+            batch = records_list[i*1000:(i+1)*1000]
+            scraperwiki.sqlite.save(unique_keys=['COD_CNPJ', 'DT_REF'], data=batch, table_name='informe_diario')
         #for row in records_list:
-        for row in tqdm.tqdm(records_list):
+        #for row in tqdm.tqdm(records_list):
             #print('linha a ser inserida no banco', row)
-            scraperwiki.sqlite.save(unique_keys=['COD_CNPJ', 'DT_REF'], data=row, table_name='informe_diario')
+            #scraperwiki.sqlite.save(unique_keys=['COD_CNPJ', 'DT_REF'], data=row, table_name='informe_diario')
+        print('Recriando os índices da tabela informe diário...')
+        create_indexes_informe_diario()
         print('Carga no banco de dados finalizada...')
     except Exception as err:
         print(f'Falha ao salvar registros no banco de dados para o período {periodo}', err)
@@ -254,6 +284,12 @@ def init():
     init_database()
 
 def init_database():
+    create_tables()
+    #drop_indexes()
+    create_indexes()
+    create_views()
+    
+def create_tables():
     """ Será necessário criar a tabela inicialmente pois o SQlite infere os tipos errados
        o que faz falhar a carga
     """
@@ -301,6 +337,36 @@ def init_database():
 
     scraperwiki.sqlite.execute(sql_create_table_dados_cadastrais)
 
+    sql_create_table='''CREATE TABLE IF NOT EXISTS informe_diario (
+        "COD_CNPJ" TEXT, 	
+        "CNPJ_FUNDO" TEXT, 	
+        "DT_REF" DATE, 	
+        "DT_COMPTC" TEXT, 	
+        "VL_TOTAL" NUMERIC, 	
+        "VL_QUOTA" NUMERIC, 	
+        "VL_PATRIM_LIQ" NUMERIC, 	
+        "CAPTC_DIA" NUMERIC, 	
+        "RESG_DIA" NUMERIC, 	
+        "NR_COTST" INTEGER 	
+    );    
+    '''
+    scraperwiki.sqlite.execute(sql_create_table)
+ 
+def drop_indexes_informe_diario():
+    scraperwiki.sqlite.execute('DROP INDEX IF EXISTS idx_informe_diario_01;')
+    scraperwiki.sqlite.execute('DROP INDEX IF EXISTS idx_informe_diario_02;')
+    scraperwiki.sqlite.execute('DROP INDEX IF EXISTS idx_informe_diario_03;')
+    scraperwiki.sqlite.execute('DROP INDEX IF EXISTS idx_informe_diario_04;')
+    scraperwiki.sqlite.execute('DROP INDEX IF EXISTS idx_informe_diario_05;')
+    scraperwiki.sqlite.execute('DROP INDEX IF EXISTS idx_informe_diario_06;')
+    scraperwiki.sqlite.execute('DROP INDEX IF EXISTS idx_informe_diario_07;')
+    scraperwiki.sqlite.execute('DROP INDEX IF EXISTS idx_informe_diario_08;')
+    
+def create_indexes():
+    create_indexes_dados_cadastrais()
+    create_indexes_informe_diario()
+    
+def create_indexes_dados_cadastrais():
     print('Criando índices na tabela dados cadastrais...')
     sql_create_idx='''CREATE UNIQUE INDEX IF NOT EXISTS idx_dados_cadastrais_02
         ON dados_cadastrais (COD_CNPJ);
@@ -342,25 +408,7 @@ def init_database():
     '''
     scraperwiki.sqlite.execute(sql_create_idx)
 
-    sql_create_table='''CREATE TABLE IF NOT EXISTS informe_diario (
-        "COD_CNPJ" TEXT, 	
-        "CNPJ_FUNDO" TEXT, 	
-        "DT_REF" DATE, 	
-        "DT_COMPTC" TEXT, 	
-        "VL_TOTAL" NUMERIC, 	
-        "VL_QUOTA" NUMERIC, 	
-        "VL_PATRIM_LIQ" NUMERIC, 	
-        "CAPTC_DIA" NUMERIC, 	
-        "RESG_DIA" NUMERIC, 	
-        "NR_COTST" INTEGER 	
-    );    
-    '''
-    scraperwiki.sqlite.execute(sql_create_table)
-    
-    #scraperwiki.sqlite.execute('DROP INDEX IF EXISTS idx_informe_diario_01;')
-    #scraperwiki.sqlite.execute('DROP INDEX IF EXISTS idx_informe_diario_02;')
-    #scraperwiki.sqlite.execute('DROP INDEX IF EXISTS idx_informe_diario_03;')
-
+def create_indexes_informe_diario():
     print('Criando índices na tabela informe diário...')
     sql_create_idx='''CREATE INDEX IF NOT EXISTS idx_informe_diario_01
         ON informe_diario (COD_CNPJ);
@@ -390,7 +438,7 @@ def init_database():
     '''
     scraperwiki.sqlite.execute(sql_create_idx)
 
-    lista_indices=scraperwiki.sqlite.execute('PRAGMA index_list(''informe_diario'');')
+    #lista_indices=scraperwiki.sqlite.execute('PRAGMA index_list(''informe_diario'');')
     #print(lista_indices)
     #for idx in lista_indices:
     #    idx_name=idx
@@ -398,6 +446,8 @@ def init_database():
     #    columns=scraperwiki.sqlite.execute('PRAGMA index_info('+idx_name+');')
     #    print('columns: ', columns)
 
+
+def create_views():
     # Evitamos usar a sintaxe que especifica as colunas da view porque
     # este só foi adicionada à versão do SQLite 3.9.0 (2015-10-14)
 
