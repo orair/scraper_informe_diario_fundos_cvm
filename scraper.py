@@ -24,76 +24,83 @@ import tqdm
 @click.option('--skip_informacoes_cadastrais', 
                 default=False, is_flag=True, 
                 show_default=True)
-@click.option('--skip_informe_diario', 
+@click.option('--skip_informe_diario_historico', 
                 default=False, is_flag=True, 
                 show_default=True)
 @click.option('--ano_inicial', 
                 default=lambda: 
-                    os.environ.get('SCRAPER_INFORME_CVM_ANO_INICIAL', 2019), 
-                show_default="Variável de ambiente SCRAPER_INFORME_DIARIO_CVM_ANO_INICIAL ou o valor padrão 2018")
-def executa_scraper(skip_informacoes_cadastrais=False, skip_informe_diario=False, ano_inicial=2019):
+                    os.environ.get('MORPH_SCRAPER_INFORME_CVM_ANO_INICIAL', 2019), 
+                show_default="Variável de ambiente MORPH_SCRAPER_INFORME_DIARIO_CVM_ANO_INICIAL ou o valor padrão 2018")
+def executa_scraper(skip_informacoes_cadastrais=False, skip_informe_diario_historico=False, ano_inicial=2019):
     init()
-   
-    if (not skip_informe_diario):
-        executa_scraper_informe_diario(ano_inicial)
+
+    executa_scraper_informe_diario_por_periodo(obtem_ultimo_periodo())
 
     if (not skip_informacoes_cadastrais):
         executa_scraper_dados_cadastrais()
 
-def executa_scraper_informe_diario(ano_inicial):
+    print(f'Ano inicial para buscar os informes diários {ano_inicial}')
+    if (not skip_informe_diario_historico):
+        executa_scraper_informe_diario_historico(ano_inicial)
+
+def executa_scraper_informe_diario_historico(ano_inicial):
     periodos = obtem_periodos(ano_inicial)
     for periodo in periodos: 
-        df2 = None
-        result, informe_diario_df = captura_arquivo_informe(periodo)
-        
-        # Caso tenha sido obtida e lido um novo arquivo com sucesso...
-        if not informe_diario_df.empty and result in (1,2):
-            informe_diario_df.sort_values(by=['COD_CNPJ', 'DT_REF'])
-            df2 = recupera_informe_diario(periodo)
-            if not df2.empty:
-                df2['DT_REF']=pd.to_datetime(df2['DT_REF'], errors='coerce', format='%Y-%m-%d')
-            existe_dados_origem=(informe_diario_df is not None \
-            and not informe_diario_df.empty)
-            existe_dados_diferentes=(df2.empty or (not informe_diario_df.equals(df2)))
-        else:
-            existe_dados_origem = False    
-        if  existe_dados_origem and existe_dados_diferentes:
-            if df2.empty:
-                salva_informe_periodo(informe_diario_df, periodo)
-            else:
-                print('Iniciando a comparação dos dados recebidos e dos dados já inseridos no banco de dados...')
-                novos_dados=[]
-                #print(type(df2), type(informe_diario_df))
-                #list2=df2.values.tolist()
-                #print(list2)
-                #set2=set(df2.values.tolist()) 
-                set2 = set(map(tuple, df2.values.tolist()))
-                set1 = set(map(tuple, informe_diario_df.values.tolist())) 
-                res = list(set2 ^ set1) 
-                novos_dados_df = pd.DataFrame(data=res, columns=informe_diario_df.columns)
-                novos_dados_df.sort_values(by=['COD_CNPJ', 'DT_REF'])
-                #print(novos_dados_df.head())
-                #merge_df=pd.merge(informe_diario_df,df2, how='left', indicator=True)
-                #merge_df=pd.merge_ordered(informe_diario_df, df2, how='left', suffixes=['', '_'])
-                #print('merge finalizado')
-                #print(merge_df.columns)
-                #print(len(merge_df.index), len(informe_diario_df.index))
-                #print(merge_df.head())
-                #del(df2)
-                #del(informe_diario_df)
-                #novos_dados_df=merge_df[merge_df['_merge']=='left_only']
-                #novos_dados_df=novos_dados_df.drop(['_merge'], axis=1)
+        executa_scraper_informe_diario_por_periodo(periodo)
 
-                #del(merge_df)
-                
-                print (f'Foram encontrados {len(informe_diario_df.index)} registros no arquivo, sendo {len(novos_dados_df.index)} novos registros...')
-                # Como o scraperwiki fornece apenas o save que faz um autocommit 
-                # por registro, só vamos salvar no banco os registros que 
-                # já identificarmos que são realmente novos dados 
-                salva_informe_periodo(novos_dados_df, periodo)
-        
+def executa_scraper_informe_diario_por_periodo(periodo):
+    df2 = None
+    result, informe_diario_df = captura_arquivo_informe(periodo)
+    
+    # Caso tenha sido obtida e lido um novo arquivo com sucesso...
+    if not informe_diario_df.empty and result in (1,2):
+        informe_diario_df.sort_values(by=['COD_CNPJ', 'DT_REF'])
+        df2 = recupera_informe_diario(periodo)
+        if not df2.empty:
+            df2['DT_REF']=pd.to_datetime(df2['DT_REF'], errors='coerce', format='%Y-%m-%d')
+        existe_dados_origem=(informe_diario_df is not None \
+        and not informe_diario_df.empty)
+        existe_dados_diferentes=(df2.empty or (not informe_diario_df.equals(df2)))
+    else:
+        existe_dados_origem = False    
+    if  existe_dados_origem and existe_dados_diferentes:
+        if df2.empty:
+            salva_informe_periodo(informe_diario_df, periodo)
         else:
-            print (f'Não foram encontrados novos registros no arquivo para o periodo {periodo}...')
+            print('Iniciando a comparação dos dados recebidos e dos dados já inseridos no banco de dados...')
+            novos_dados=[]
+            #print(type(df2), type(informe_diario_df))
+            #list2=df2.values.tolist()
+            #print(list2)
+            #set2=set(df2.values.tolist()) 
+            set2 = set(map(tuple, df2.values.tolist()))
+            set1 = set(map(tuple, informe_diario_df.values.tolist())) 
+            res = list(set2 ^ set1) 
+            novos_dados_df = pd.DataFrame(data=res, columns=informe_diario_df.columns)
+            novos_dados_df.sort_values(by=['COD_CNPJ', 'DT_REF'])
+            #print(novos_dados_df.head())
+            #merge_df=pd.merge(informe_diario_df,df2, how='left', indicator=True)
+            #merge_df=pd.merge_ordered(informe_diario_df, df2, how='left', suffixes=['', '_'])
+            #print('merge finalizado')
+            #print(merge_df.columns)
+            #print(len(merge_df.index), len(informe_diario_df.index))
+            #print(merge_df.head())
+            #del(df2)
+            #del(informe_diario_df)
+            #novos_dados_df=merge_df[merge_df['_merge']=='left_only']
+            #novos_dados_df=novos_dados_df.drop(['_merge'], axis=1)
+
+            #del(merge_df)
+            
+            print (f'Foram encontrados {len(informe_diario_df.index)} registros no arquivo, sendo {len(novos_dados_df.index)} novos registros...')
+            # Como o scraperwiki fornece apenas o save que faz um autocommit 
+            # por registro, só vamos salvar no banco os registros que 
+            # já identificarmos que são realmente novos dados 
+            salva_informe_periodo(novos_dados_df, periodo)
+    
+    else:
+        print (f'Não foram encontrados novos registros no arquivo para o periodo {periodo}...')
+
 
 def recupera_informe_diario(periodo):
     query=f"COD_CNPJ, DT_REF, CNPJ_FUNDO, DT_COMPTC, VL_TOTAL, VL_QUOTA, VL_PATRIM_LIQ, CAPTC_DIA, RESG_DIA, NR_COTST from informe_diario where strftime('%Y%m', DT_REF) = '{periodo}' order by COD_CNPJ, DT_REF"
@@ -146,13 +153,20 @@ def captura_arquivo_informe(periodo):
 
     return result, df
 
+def obtem_ultimo_periodo():
+    yesterday = datetime.today() - timedelta(days=1)
+    ano = int(yesterday.strftime('%Y'))
+    mes = int(yesterday.strftime('%m'))
+    periodo=f'{ano:04}{mes:02}'
+    return periodo
+
 def obtem_periodos(ano_inicial=2018):
     periodos=[]
 
     today = datetime.today()
     yesterday = today - timedelta(days=1)
-    ano_final = int(today.strftime('%Y'))
-    mes_final = int(today.strftime('%m'))
+    ano_final = int(yesterday.strftime('%Y'))
+    mes_final = int(yesterday.strftime('%m'))
 
     for ano in range(ano_inicial, ano_final+1):
         for mes in range(1,13):
@@ -182,9 +196,10 @@ def salva_informe_periodo(informe_diario_df, periodo):
         print(f'Iniciando inserção no banco de dados de {len(informe_diario_df.index)} registros.')
         
         records_list=informe_diario_df.to_dict('records')
-        chunks = (len(records_list) - 1) // 1000 + 1
+        batch_size = 5000
+        chunks = (len(records_list) - 1) // batch_size + 1
         for i in tqdm.tqdm(range(chunks)):
-            batch = records_list[i*1000:(i+1)*1000]
+            batch = records_list[i*batch_size:(i+1) * batch_size]
             scraperwiki.sqlite.save(unique_keys=['COD_CNPJ', 'DT_REF'], data=batch, table_name='informe_diario')
         #for row in records_list:
         #for row in tqdm.tqdm(records_list):
@@ -272,8 +287,15 @@ def salva_dados_cadastrais(df):
         return False
 
     try:
-        for row in df.to_dict('records'):
-            scraperwiki.sqlite.save(unique_keys=['COD_CNPJ'], data=row, table_name='dados_cadastrais')
+        records_list=df.to_dict('records')
+        batch_size = 1000
+        chunks = (len(records_list) - 1) // batch_size + 1
+        for i in tqdm.tqdm(range(chunks)):
+            batch = records_list[i*batch_size:(i+1) * batch_size]
+            scraperwiki.sqlite.save(unique_keys=['COD_CNPJ'], data=batch, table_name='dados_cadastrais')
+        #for row in df.to_dict('records'):
+        #    scraperwiki.sqlite.save(unique_keys=['COD_CNPJ'], data=row, table_name='dados_cadastrais')
+
     except Exception as err:
         print(f'Falha ao salvar registros no banco de dados dos dados cadastrais dos fundos', err)
         print(type(err))    # the exception instance
@@ -351,6 +373,16 @@ def create_tables():
     );    
     '''
     scraperwiki.sqlite.execute(sql_create_table)
+
+def drop_indexes_dados_cadastrais():
+    scraperwiki.sqlite.execute('DROP INDEX IF EXISTS idx_dados_cadastrais_01;')
+    scraperwiki.sqlite.execute('DROP INDEX IF EXISTS idx_dados_cadastrais_02;')
+    scraperwiki.sqlite.execute('DROP INDEX IF EXISTS idx_dados_cadastrais_03;')
+    scraperwiki.sqlite.execute('DROP INDEX IF EXISTS idx_dados_cadastrais_04;')
+    scraperwiki.sqlite.execute('DROP INDEX IF EXISTS idx_dados_cadastrais_05;')
+    scraperwiki.sqlite.execute('DROP INDEX IF EXISTS idx_dados_cadastrais_06;')
+    scraperwiki.sqlite.execute('DROP INDEX IF EXISTS idx_dados_cadastrais_07;')
+    scraperwiki.sqlite.execute('DROP INDEX IF EXISTS idx_dados_cadastrais_08;')
  
 def drop_indexes_informe_diario():
     scraperwiki.sqlite.execute('DROP INDEX IF EXISTS idx_informe_diario_01;')
