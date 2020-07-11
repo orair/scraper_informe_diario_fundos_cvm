@@ -29,9 +29,9 @@ import tqdm
                 show_default=True)
 @click.option('--ano_inicial', 
                 default=lambda: 
-                    os.environ.get('MORPH_SCRAPER_INFORME_CVM_ANO_INICIAL', 2019), 
+                    os.environ.get('MORPH_SCRAPER_INFORME_CVM_ANO_INICIAL', 2018), 
                 show_default="Variável de ambiente MORPH_SCRAPER_INFORME_DIARIO_CVM_ANO_INICIAL ou o valor padrão 2018")
-def executa_scraper(skip_informacoes_cadastrais=False, skip_informe_diario_historico=False, ano_inicial=2019):
+def executa_scraper(skip_informacoes_cadastrais=False, skip_informe_diario_historico=False, ano_inicial=2018):
     init()
 
     executa_scraper_informe_diario_por_periodo(obtem_ultimo_periodo())
@@ -316,8 +316,8 @@ def create_tables():
        o que faz falhar a carga
     """
     sql_create_table_dados_cadastrais='''CREATE TABLE IF NOT EXISTS dados_cadastrais (
-        "COD_CNPJ" TEXT,
-        "CNPJ_FUNDO" TEXT, 	
+        "COD_CNPJ" TEXT NOT NULL PRIMARY KEY,
+        "CNPJ_FUNDO" TEXT NOT NULL, 	
         "DENOM_SOCIAL" TEXT, 	
         "DT_REG" TEXT, 	
         "DT_CONST" TEXT, 	
@@ -360,16 +360,17 @@ def create_tables():
     scraperwiki.sqlite.execute(sql_create_table_dados_cadastrais)
 
     sql_create_table='''CREATE TABLE IF NOT EXISTS informe_diario (
-        "COD_CNPJ" TEXT, 	
-        "CNPJ_FUNDO" TEXT, 	
-        "DT_REF" DATE, 	
-        "DT_COMPTC" TEXT, 	
+        "COD_CNPJ" TEXT NOT NULL, 	
+        "CNPJ_FUNDO" TEXT NOT NULL, 	
+        "DT_REF" DATE NOT NULL, 	
+        "DT_COMPTC" TEXT NOT NULL, 	
         "VL_TOTAL" NUMERIC, 	
         "VL_QUOTA" NUMERIC, 	
         "VL_PATRIM_LIQ" NUMERIC, 	
         "CAPTC_DIA" NUMERIC, 	
         "RESG_DIA" NUMERIC, 	
-        "NR_COTST" INTEGER 	
+        "NR_COTST" INTEGER, 	
+        PRIMARY KEY(COD_CNPJ, DT_REF)
     );    
     '''
     scraperwiki.sqlite.execute(sql_create_table)
