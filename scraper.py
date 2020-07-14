@@ -41,7 +41,7 @@ def executa_scraper(skip_informacoes_cadastrais=False, skip_informe_diario_histo
 
     print(f'Ano inicial para buscar os informes diários {ano_inicial}')
     if (not skip_informe_diario_historico):
-        executa_scraper_informe_diario_historico(ano_inicial)
+        executa_scraper_informe_diario_historico(int(ano_inicial))
 
 def executa_scraper_informe_diario_historico(ano_inicial):
     periodos = obtem_periodos(ano_inicial)
