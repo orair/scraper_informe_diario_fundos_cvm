@@ -29,12 +29,21 @@ import tqdm
                 show_default=True)
 @click.option('--ano_inicial', 
                 default=lambda: 
-                    os.environ.get('MORPH_SCRAPER_INFORME_CVM_ANO_INICIAL', 2018), 
+                    os.environ.get('MORPH_SCRAPER_INFORME_CVM_ANO_INICIAL', 2019), 
                 show_default="Variável de ambiente MORPH_SCRAPER_INFORME_DIARIO_CVM_ANO_INICIAL ou o valor padrão 2018")
-def executa_scraper(skip_informacoes_cadastrais=False, skip_informe_diario_historico=False, ano_inicial=2018):
+@click.option('--compara_antes_insercao', 
+                default=lambda: 
+                    os.environ.get('MORPH_SCRAPER_COMPARA_ANTES_INSERCAO', 'N'), 
+                show_default=True)
+def executa_scraper(skip_informacoes_cadastrais=False, skip_informe_diario_historico=False, ano_inicial=2018,
+    compara_antes_insercao=True):
     init()
 
-    executa_scraper_informe_diario_por_periodo(obtem_ultimo_periodo())
+    if (compara_antes_insercao == 'N'):
+        compara_antes_insercao=False
+    else: compara_antes_insercao=True
+
+    executa_scraper_informe_diario_por_periodo(obtem_ultimo_periodo(), compara_antes_insercao)
 
     if (not skip_informacoes_cadastrais):
         executa_scraper_dados_cadastrais()
@@ -48,14 +57,17 @@ def executa_scraper_informe_diario_historico(ano_inicial):
     for periodo in periodos: 
         executa_scraper_informe_diario_por_periodo(periodo)
 
-def executa_scraper_informe_diario_por_periodo(periodo):
+def executa_scraper_informe_diario_por_periodo(periodo, compara_antes_insercao=True):
     df2 = None
     result, informe_diario_df = captura_arquivo_informe(periodo)
     
     # Caso tenha sido obtida e lido um novo arquivo com sucesso...
     if not informe_diario_df.empty and result in (1,2):
         informe_diario_df.sort_values(by=['COD_CNPJ', 'DT_REF'])
-        df2 = recupera_informe_diario(periodo)
+        df2 = None
+        if compara_antes_insercao:
+            df2 = recupera_informe_diario(periodo)
+        else: df2 = pd.DataFrame()
         if not df2.empty:
             df2['DT_REF']=pd.to_datetime(df2['DT_REF'], errors='coerce', format='%Y-%m-%d')
         existe_dados_origem=(informe_diario_df is not None \
