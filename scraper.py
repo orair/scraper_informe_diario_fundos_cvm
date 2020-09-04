@@ -8,6 +8,7 @@ from pathlib import Path
 os.environ['SCRAPERWIKI_DATABASE_NAME'] = 'sqlite:///data.sqlite'
 import datetime
 from datetime import datetime, timedelta
+from dateutil.relativedelta import *
 import click
 import scraperwiki
 import pandas as pd
@@ -27,15 +28,15 @@ import tqdm
 @click.option('--skip_informe_diario_historico', 
                 default=False, is_flag=True, 
                 show_default=True)
-@click.option('--ano_inicial', 
+@click.option('--periodo_inicial', 
                 default=lambda: 
-                    os.environ.get('MORPH_SCRAPER_INFORME_CVM_ANO_INICIAL', 2019), 
-                show_default="Variável de ambiente MORPH_SCRAPER_INFORME_DIARIO_CVM_ANO_INICIAL ou o valor padrão 2018")
+                    os.environ.get('MORPH_SCRAPER_INFORME_CVM_PERIODO_INICIAL', (datetime.today() - timedelta(days=32)).strftime('%Y%m')), 
+                show_default="Variável de ambiente MORPH_SCRAPER_INFORME_DIARIO_CVM_PERIODO_INICIAL ou o valor padrão (últimos dois meses)")
 @click.option('--compara_antes_insercao', 
                 default=lambda: 
                     os.environ.get('MORPH_SCRAPER_COMPARA_ANTES_INSERCAO', 'N'), 
                 show_default=True)
-def executa_scraper(skip_informacoes_cadastrais=False, skip_informe_diario_historico=False, ano_inicial=2018,
+def executa_scraper(skip_informacoes_cadastrais=False, skip_informe_diario_historico=False, periodo_inicial='201912',
     compara_antes_insercao=True):
     init()
 
@@ -48,12 +49,12 @@ def executa_scraper(skip_informacoes_cadastrais=False, skip_informe_diario_histo
     if (not skip_informacoes_cadastrais):
         executa_scraper_dados_cadastrais()
 
-    print(f'Ano inicial para buscar os informes diários {ano_inicial}')
+    print(f'Período inicial para buscar os informes diários {periodo_inicial}')
     if (not skip_informe_diario_historico):
-        executa_scraper_informe_diario_historico(int(ano_inicial))
+        executa_scraper_informe_diario_historico(periodo_inicial)
 
-def executa_scraper_informe_diario_historico(ano_inicial):
-    periodos = obtem_periodos(ano_inicial)
+def executa_scraper_informe_diario_historico(periodo_inicial):
+    periodos = obtem_periodos(periodo_inicial)
     for periodo in periodos: 
         executa_scraper_informe_diario_por_periodo(periodo)
 
@@ -172,7 +173,7 @@ def obtem_ultimo_periodo():
     periodo=f'{ano:04}{mes:02}'
     return periodo
 
-def obtem_periodos(ano_inicial=2018):
+def obtem_periodos(periodo_inicial='201912'):
     periodos=[]
 
     today = datetime.today()
@@ -180,8 +181,20 @@ def obtem_periodos(ano_inicial=2018):
     ano_final = int(yesterday.strftime('%Y'))
     mes_final = int(yesterday.strftime('%m'))
 
+    my_string = '2019-10-31'
+
+    # Create date object
+    data_inicial = datetime.strptime(periodo_inicial, "%Y%m")
+    ano_inicial = int(data_inicial.strftime('%Y'))
+    mes_inicial = int(data_inicial.strftime('%m'))
+
     for ano in range(ano_inicial, ano_final+1):
-        for mes in range(1,13):
+        primeiro_mes=1
+
+        if (ano == ano_inicial): 
+            primeiro_mes=mes_inicial;
+        
+        for mes in range(primeiro_mes,13):
             # evita pegar anos futuros, visto que o arquivo ainda não existe
             if ano == ano_final and mes > mes_final:
                 break
