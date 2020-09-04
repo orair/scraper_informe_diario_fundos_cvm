@@ -38,6 +38,7 @@ import tqdm
                 show_default=True)
 def executa_scraper(skip_informacoes_cadastrais=False, skip_informe_diario_historico=False, periodo_inicial='201912',
     compara_antes_insercao=True):
+    print(f'Período inicial para buscar os informes diários {periodo_inicial}')
     init()
 
     if (compara_antes_insercao == 'N'):
@@ -177,11 +178,9 @@ def obtem_periodos(periodo_inicial='201912'):
     periodos=[]
 
     today = datetime.today()
-    yesterday = today - timedelta(days=1)
-    ano_final = int(yesterday.strftime('%Y'))
-    mes_final = int(yesterday.strftime('%m'))
-
-    my_string = '2019-10-31'
+    last_month = today - timedelta(days=31)
+    ano_final = int(last_month.strftime('%Y'))
+    mes_final = int(last_month.strftime('%m'))
 
     # Create date object
     data_inicial = datetime.strptime(periodo_inicial, "%Y%m")
