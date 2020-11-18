@@ -55,7 +55,7 @@ def executa_scraper(skip_informacoes_cadastrais=False, skip_informe_diario_histo
 
     if (limpa_acervo_antigo):
         executa_limpeza_acervo_antigo()
-    
+   
     executa_scraper_informe_diario_por_periodo(obtem_ultimo_periodo(), compara_antes_insercao)
 
     if (not skip_informacoes_cadastrais):
@@ -639,18 +639,22 @@ def _download_file(base_url, filename):
 
 def executa_limpeza_acervo_antigo():
     last_month = datetime.today() - timedelta(days=30)
+    last_month = last_month.strftime('%Y-%m-%d')
 
-    sql_delete='''delete from informe_diario
-        where exists (select 1 from informe_diario d2
-        where informe_diario.COD_CNPJ = d2.COD_CNPJ
-        and informe_diario.DT_REF < d2.DT_REF
-        and strftime('%Y%m', informe_diario.DT_REF) = strftime('%Y%m', d2.DT_REF)
+    sql_delete=f'''delete from informe_diario
+        where informe_diario.DT_REF < '{last_month}' and 
+        exists (
+            select 1 from informe_diario d2
+            where informe_diario.COD_CNPJ = d2.COD_CNPJ
+            and informe_diario.DT_REF < d2.DT_REF
+            and strftime('%Y%m', informe_diario.DT_REF) = strftime('%Y%m', d2.DT_REF)
         )'''
-       #d.DT_REF < {last_month} and 
+       #d. 
     try:
         print('Apagando acervo antigo...')
         print(sql_delete)
-        scraperwiki.sqlite.execute(sql_delete)        
+        scraperwiki.sqlite.execute(sql_delete)
+        print('Limpeza executada com sucesso...')
     except (sqlite3.OperationalError, sqlalchemy.exc.OperationalError) as err:        
         print('Falha ao apagar acervo antigo...', err)
         print(type(err))    # the exception instance
