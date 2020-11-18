@@ -256,7 +256,7 @@ def executa_scraper_dados_cadastrais():
     # tentaremos obter dados cadastrais de três dias atrás
     periodo = (datetime.today()- timedelta(days=3))
     while not cal.isbizday(periodo):
-        periodo = periodo - datetime.timedelta(days=1)    
+        periodo = periodo - timedelta(days=1)    
 
     periodo = periodo.strftime('%Y%m%d')
     print (f'Serão obtidos os dados cadastrais publicados pela CVM em {periodo}')
