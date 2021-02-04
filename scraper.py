@@ -95,7 +95,7 @@ def executa_scraper_informe_diario_por_periodo(periodo, compara_antes_insercao=T
     # Caso tenha sido obtida e lido um novo arquivo com sucesso...
     if not informe_diario_df.empty and result in (1,2):
         if (enable_remotedb):
-
+            print('Inserindo informe diário no banco de dados remoto...')
             informe_diario_df.set_index(['COD_CNPJ', 'DT_REF'], inplace=True)
 
             # it does not matter if if_row_exists is set
@@ -282,25 +282,25 @@ def salva_informe_periodo(informe_diario_df, periodo):
         return None
 
 def executa_scraper_dados_cadastrais(enable_remotedb, engine):
-    from bizdays import Calendar
-    cal = Calendar.load('feriados_nacionais_ANBIMA.csv')
+    #from bizdays import Calendar
+    #cal = Calendar.load('feriados_nacionais_ANBIMA.csv')
     
     # tentaremos obter dados cadastrais de três dias atrás
-    periodo = (datetime.today()- timedelta(days=3))
-    while not cal.isbizday(periodo):
-        periodo = periodo - timedelta(days=1)    
+    #periodo = (datetime.today()- timedelta(days=3))
+    #while not cal.isbizday(periodo):
+    #    periodo = periodo - timedelta(days=1)    
 
-    periodo = periodo.strftime('%Y%m%d')
-    print (f'Serão obtidos os dados cadastrais publicados pela CVM em {periodo}')
-    df = captura_arquivo_dados_cadastrais(periodo)
+    #periodo = periodo.strftime('%Y%m%d')
+    print (f'Serão obtidos os dados cadastrais publicados pela CVM...')
+    df = captura_arquivo_dados_cadastrais()
     if df is None or df.empty:
         print('Recebeu dados vazios!')
         return False
     return salva_dados_cadastrais(df, enable_remotedb, engine)
 
-def captura_arquivo_dados_cadastrais(periodo):
+def captura_arquivo_dados_cadastrais():
     base_url = f'http://dados.cvm.gov.br/dados/FI/CAD/DADOS/'
-    filename=f'inf_cadastral_fi_{periodo}.csv'
+    filename=f'cad_fi.csv'
 
     print(f'Verifica necessidade de download dos dados cadastrais dos fundos de investimento')
     _download_file(base_url, filename)
@@ -370,6 +370,7 @@ def salva_dados_cadastrais(df, enable_remotedb, engine):
         return None
 
     if (enable_remotedb):
+        print('Salvando dados cadastrais no banco de dados remoto...')
         df.set_index(['COD_CNPJ'], inplace=True)
     
         # it does not matter if if_row_exists is set

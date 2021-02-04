@@ -2,11 +2,13 @@
 DROP TABLE IF EXISTS dados_cadastrais;
 
 CREATE TABLE IF NOT EXISTS dados_cadastrais (
-        COD_CNPJ VARCHAR(50) NOT NULL PRIMARY KEY,
+        TP_FUNDO VARCHAR(20),
+	COD_CNPJ VARCHAR(50) NOT NULL PRIMARY KEY,
         CNPJ_FUNDO VARCHAR(50) NOT NULL, 	
         DENOM_SOCIAL VARCHAR(400), 	
         DT_REG TEXT, 	
-        DT_CONST TEXT, 	
+        DT_CONST TEXT,
+	CD_CVM VARCHAR(7),
         DT_CANCEL TEXT, 	
         SIT VARCHAR(40),
         DT_INI_SIT TEXT, 	
@@ -15,13 +17,14 @@ CREATE TABLE IF NOT EXISTS dados_cadastrais (
         DT_FIM_EXERC TEXT, 	
         CLASSE VARCHAR(100), 	
         DT_INI_CLASSE TEXT, 	
-        RENTAB_FUNDO TEXT, 	
+        RENTAB_FUNDO TEXT,
         CONDOM TEXT, 	
         FUNDO_COTAS TEXT, 	
         FUNDO_EXCLUSIVO TEXT, 	
         TRIB_LPRAZO TEXT, 	
         INVEST_QUALIF TEXT, 	
-        TAXA_PERFM TEXT, 	
+        ENTID_INVEST VARCHAR(1),
+	TAXA_PERFM TEXT, 	
         INF_TAXA_PERFM TEXT, 	
         TAXA_ADM TEXT, 	
         INF_TAXA_ADM TEXT, 	
@@ -92,6 +95,9 @@ CREATE INDEX idx_dados_cadastrais_07
         ON dados_cadastrais (CPF_CNPJ_GESTOR);
 CREATE INDEX idx_dados_cadastrais_08
         ON dados_cadastrais (CNPJ_CONTROLADOR);
+CREATE INDEX idx_dados_cadastrais_09
+        ON dados_cadastrais (TP_FUNDO);
+
 
 CREATE INDEX idx_informe_diario_01
         ON informe_diario (COD_CNPJ);
