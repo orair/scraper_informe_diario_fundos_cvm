@@ -396,11 +396,13 @@ def create_tables():
        o que faz falhar a carga
     """
     sql_create_table_dados_cadastrais='''CREATE TABLE IF NOT EXISTS dados_cadastrais (
+        TP_FUNDO TEXT,
         "COD_CNPJ" TEXT NOT NULL PRIMARY KEY,
         "CNPJ_FUNDO" TEXT NOT NULL, 	
         "DENOM_SOCIAL" TEXT, 	
         "DT_REG" TEXT, 	
-        "DT_CONST" TEXT, 	
+        "DT_CONST" TEXT, 
+        "CD_CVM" TEXT,	
         "DT_CANCEL" TEXT, 	
         "SIT" TEXT, 	
         "DT_INI_SIT" TEXT, 	
@@ -414,7 +416,8 @@ def create_tables():
         "FUNDO_COTAS" TEXT, 	
         "FUNDO_EXCLUSIVO" TEXT, 	
         "TRIB_LPRAZO" TEXT, 	
-        "INVEST_QUALIF" TEXT, 	
+        "INVEST_QUALIF" TEXT,
+        "ENTID_INVEST" TEXT, 	
         "TAXA_PERFM" TEXT, 	
         "INF_TAXA_PERFM" TEXT, 	
         "TAXA_ADM" TEXT, 	
