@@ -354,6 +354,25 @@ def salva_dados_cadastrais(df, enable_remotedb, engine):
         return False
 
     try:
+        if (enable_remotedb):
+            print('Salvando dados cadastrais no banco de dados remoto...')
+            df.set_index(['COD_CNPJ'], inplace=True)
+    
+            # it does not matter if if_row_exists is set
+            # to "update" or "ignore" for table creation
+            upsert(engine=engine,
+               df=df,
+               table_name='dados_cadastrais',
+               if_row_exists='update'
+               #,dtype=dtype
+            )
+    except Exception as err:
+        print(f'Falha ao salvar registros dos dados cadastrais no banco de dados remoto...', err)
+        print(type(err))    # the exception instance
+        print(err.args)     # arguments stored in .args
+        return None
+
+    try:
         records_list=df.to_dict('records')
         batch_size = 1000
         chunks = (len(records_list) - 1) // batch_size + 1
@@ -368,19 +387,6 @@ def salva_dados_cadastrais(df, enable_remotedb, engine):
         print(type(err))    # the exception instance
         print(err.args)     # arguments stored in .args
         return None
-
-    if (enable_remotedb):
-        print('Salvando dados cadastrais no banco de dados remoto...')
-        df.set_index(['COD_CNPJ'], inplace=True)
-    
-        # it does not matter if if_row_exists is set
-        # to "update" or "ignore" for table creation
-        upsert(engine=engine,
-           df=df,
-           table_name='dados_cadastrais',
-           if_row_exists='update'
-           #,dtype=dtype
-        )
 
 def init():
     init_database()
