@@ -20,6 +20,8 @@ import bizdays
 import sqlite3
 import sqlalchemy
 import tqdm
+from pangres import upsert
+from sqlalchemy import create_engine, VARCHAR
 
 @click.command("Gerenciador do Scraper dos Informes Diários de Fundos de Investimentos da CVM")
 @click.option('--skip_informacoes_cadastrais', 
@@ -40,11 +42,23 @@ import tqdm
                 default=lambda: 
                     os.environ.get('MORPH_SCRAPER_LIMPA_ACERVO_ANTIGO', 'S'), 
                 show_default=True)
+@click.option('--enable_remotedb', 
+                default=lambda: 
+                    os.environ.get('MORPH_SCRAPER_ENABLE_REMOTEDB', 'N'), 
+                show_default=True)
 def executa_scraper(skip_informacoes_cadastrais=False, skip_informe_diario_historico=False, periodo_inicial='201912',
-    compara_antes_insercao=True, limpa_acervo_antigo=True):
+    compara_antes_insercao=True, limpa_acervo_antigo=True, enable_remotedb=False):
     print(f'Período inicial para buscar os informes diários {periodo_inicial}')
     init()
 
+    #Init engine
+    dbuser = os.environ.get('MORPH_MYSQL_DBUSER', 'aaa')
+    pwd = os.environ.get('MORPH_MYSQL_PWD', 'xxx')
+    server  = os.environ.get('MORPH_MYSQL_SERVER', 'remotemysql.com:3306')
+    db_instance = os.environ.get('MORPH_MYSQL_DBINSTANCE', 'aaa')
+    connection_string = 'mysql+pymysql://'+dbuser+':'+pwd+'@'+server+'/'+db_instance
+    engine = create_engine(connection_string)
+    
     if (compara_antes_insercao == 'N'):
         compara_antes_insercao=False
     else: compara_antes_insercao=True
@@ -53,13 +67,17 @@ def executa_scraper(skip_informacoes_cadastrais=False, skip_informe_diario_histo
         limpa_acervo_antigo = False
     else: limpa_acervo_antigo = True
 
+    if (enable_remotedb == 'S'):
+        enable_remotedb = True
+    else: enable_remotedb = False
+
     if (limpa_acervo_antigo):
         executa_limpeza_acervo_antigo()
    
-    executa_scraper_informe_diario_por_periodo(obtem_ultimo_periodo(), compara_antes_insercao)
+    executa_scraper_informe_diario_por_periodo(obtem_ultimo_periodo(), compara_antes_insercao, enable_remotedb, engine)
 
     if (not skip_informacoes_cadastrais):
-        executa_scraper_dados_cadastrais()
+        executa_scraper_dados_cadastrais(enable_remotedb, engine)
 
     print(f'Período inicial para buscar os informes diários {periodo_inicial}')
     if (not skip_informe_diario_historico):
@@ -70,13 +88,27 @@ def executa_scraper_informe_diario_historico(periodo_inicial):
     for periodo in periodos: 
         executa_scraper_informe_diario_por_periodo(periodo)
 
-def executa_scraper_informe_diario_por_periodo(periodo, compara_antes_insercao=True):
+def executa_scraper_informe_diario_por_periodo(periodo, compara_antes_insercao=True, enable_remotedb=False, engine=None):
     df2 = None
     result, informe_diario_df = captura_arquivo_informe(periodo)
     
     # Caso tenha sido obtida e lido um novo arquivo com sucesso...
     if not informe_diario_df.empty and result in (1,2):
+        if (enable_remotedb):
+
+            informe_diario_df.set_index(['COD_CNPJ', 'DT_REF'], inplace=True)
+
+            # it does not matter if if_row_exists is set
+            # to "update" or "ignore" for table creation
+            upsert(engine=engine,
+               df=informe_diario_df,
+               table_name='informe_diario',
+               if_row_exists='update'
+               #,dtype=dtype
+            )
+
         informe_diario_df.sort_values(by=['COD_CNPJ', 'DT_REF'])
+                   
         df2 = None
         if compara_antes_insercao:
             df2 = recupera_informe_diario(periodo)
@@ -249,7 +281,7 @@ def salva_informe_periodo(informe_diario_df, periodo):
         print(err.args)     # arguments stored in .args
         return None
 
-def executa_scraper_dados_cadastrais():
+def executa_scraper_dados_cadastrais(enable_remotedb, engine):
     from bizdays import Calendar
     cal = Calendar.load('feriados_nacionais_ANBIMA.csv')
     
@@ -264,7 +296,7 @@ def executa_scraper_dados_cadastrais():
     if df is None or df.empty:
         print('Recebeu dados vazios!')
         return False
-    return salva_dados_cadastrais(df)
+    return salva_dados_cadastrais(df, enable_remotedb, engine)
 
 def captura_arquivo_dados_cadastrais(periodo):
     base_url = f'http://dados.cvm.gov.br/dados/FI/CAD/DADOS/'
@@ -316,7 +348,7 @@ def captura_arquivo_dados_cadastrais(periodo):
     # idxColunas=[0,1,5,10,12,13,14,15,16,17,18,19,20,21,24,25,26,27,28,29,34,35]
     return df
 
-def salva_dados_cadastrais(df):
+def salva_dados_cadastrais(df, enable_remotedb, engine):
     if df is None or df.empty:
         print('Recebeu dados cadastrais vazios!')
         return False
@@ -336,6 +368,18 @@ def salva_dados_cadastrais(df):
         print(type(err))    # the exception instance
         print(err.args)     # arguments stored in .args
         return None
+
+    if (enable_remotedb):
+        df.set_index(['COD_CNPJ'], inplace=True)
+    
+        # it does not matter if if_row_exists is set
+        # to "update" or "ignore" for table creation
+        upsert(engine=engine,
+           df=df,
+           table_name='dados_cadastrais',
+           if_row_exists='update'
+           #,dtype=dtype
+        )
 
 def init():
     init_database()
