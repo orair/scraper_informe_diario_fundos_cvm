@@ -57,10 +57,14 @@ CREATE TABLE IF NOT EXISTS informe_diario (
         VL_PATRIM_LIQ NUMERIC(17,2), 	
         CAPTC_DIA NUMERIC(17,2), 	
         RESG_DIA NUMERIC(17,2), 	
-        NR_COTST INTEGER, 	
+        NR_COTST INTEGER,
+	ANO_REF INTEGER GENERATED ALWAYS AS (YEAR(DT_REF)) STORED NOT NULL,
+	MES_REF INTEGER GENERATED ALWAYS AS (MONTH(DT_REF)) STORED NOT NULL,
         PRIMARY KEY(COD_CNPJ, DT_REF)
 );    
 
+-- ALTER TABLE informe_diario ADD COLUMN ANO_REF INTEGER GENERATED ALWAYS AS (YEAR(DT_REF)) STORED NOT NULL;
+-- ALTER TABLE informe_diario ADD COLUMN MES_REF INTEGER GENERATED ALWAYS AS (MONTH(DT_REF)) STORED NOT NULL;
 
 -- DROP INDEX IF EXISTS idx_dados_cadastrais_01;
 -- DROP INDEX IF EXISTS idx_dados_cadastrais_02;
@@ -112,3 +116,10 @@ CREATE UNIQUE INDEX idx_informe_diario_05
         ON informe_diario (COD_CNPJ, DT_REF);
 CREATE UNIQUE INDEX idx_informe_diario_06
         ON informe_diario (CNPJ_FUNDO, DT_REF);
+CREATE INDEX idx_informe_diario_07
+        ON informe_diario (ANO_REF);
+CREATE INDEX idx_informe_diario_08
+        ON informe_diario (MES_REF);
+CREATE INDEX idx_informe_diario_09
+        ON informe_diario (CNPJ_FUNDO, ANO_REF, MES_REF);
+

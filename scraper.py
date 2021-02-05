@@ -214,15 +214,19 @@ def importa_dados_remotos(engine):
     print ('Iniciando importação dos dados remotos na base local')
     last_month = datetime.today() - timedelta(days=30)
     last_month = last_month.strftime('%Y-%m-%d')
-
-    sql=f'''select * from informe_diario
+    sql=f'''select COD_CNPJ,
+            CNPJ_FUNDO,
+            DT_REF,
+            DT_COMPTC,
+            VL_QUOTA
+        from informe_diario
         where informe_diario.DT_REF >= '{last_month}' or 
         not exists (
             select 1 from informe_diario d2
             where informe_diario.COD_CNPJ = d2.COD_CNPJ
             and d2.DT_REF > informe_diario.DT_REF
-            and year(informe_diario.DT_REF) = year(d2.DT_REF)
-            and month(informe_diario.DT_REF) = month(d2.DT_REF)
+            and informe_diario.ANO_REF = d2.ANO_REF
+            and informe_diario.MES_REF = d2.MES_REF
         )'''
     
     try:
