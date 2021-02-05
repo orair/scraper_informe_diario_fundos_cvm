@@ -24,40 +24,56 @@ from pangres import upsert
 from sqlalchemy import create_engine, VARCHAR
 
 @click.command("Gerenciador do Scraper dos Informes Diários de Fundos de Investimentos da CVM")
+@click.option('--skip_informe_diario_atual', 
+                default=lambda:
+                    os.environ.get('MORPH_SCRAPER_SKIP_INFORME_ATUAL', 'N'),
+                show_default="Variável de ambiente MORPH_SCRAPER_SKIP_INFORME_ATUAL ou N")
 @click.option('--skip_informacoes_cadastrais', 
-                default=False, is_flag=True, 
-                show_default=True)
+                default=lambda:
+                    os.environ.get('MORPH_SCRAPER_SKIP_INF_CAD', 'N'),
+                show_default="Variável de ambiente MORPH_SCRAPER_SKIP_INF_CAD ou N")
+                
 @click.option('--skip_informe_diario_historico', 
-                default=False, is_flag=True, 
-                show_default=True)
+                default=lambda:
+                    os.environ.get('MORPH_SCRAPER_SKIP_INFORME_HIST', 'N'),
+                show_default="Variável de ambiente MORPH_SCRAPER_SKIP_INFORME_HIST ou N")
 @click.option('--periodo_inicial', 
                 default=lambda: 
-                    os.environ.get('MORPH_SCRAPER_INFORME_CVM_PERIODO_INICIAL', (datetime.today() - timedelta(days=32)).strftime('%Y%m')), 
+                    os.environ.get('MORPH_SCRAPER_INFORME_CVM_PERIODO_INICIAL', (datetime.today() - timedelta(days=32)).strftime('%Y%m')),
                 show_default="Variável de ambiente MORPH_SCRAPER_INFORME_DIARIO_CVM_PERIODO_INICIAL ou o valor padrão (últimos dois meses)")
 @click.option('--compara_antes_insercao', 
                 default=lambda: 
                     os.environ.get('MORPH_SCRAPER_COMPARA_ANTES_INSERCAO', 'N'), 
-                show_default=True)
+                show_default="Variável de ambiente MORPH_SCRAPER_COMPARA_ANTES ou valor padrão N")
 @click.option('--limpa_acervo_antigo', 
                 default=lambda: 
                     os.environ.get('MORPH_SCRAPER_LIMPA_ACERVO_ANTIGO', 'S'), 
-                show_default=True)
+                show_default="Variável de ambiente MORPH_SCRAPER_LIMPA_ACERVO_ANTIGO ou valor padrão N")
 @click.option('--enable_remotedb', 
                 default=lambda: 
-                    os.environ.get('MORPH_SCRAPER_ENABLE_REMOTEDB', 'N'), 
-                show_default=True)
-def executa_scraper(skip_informacoes_cadastrais=False, skip_informe_diario_historico=False, periodo_inicial='201912',
-    compara_antes_insercao=True, limpa_acervo_antigo=True, enable_remotedb=False):
+                    os.environ.get('MORPH_SCRAPER_ENABLE_REMOTEDB', 'S'), 
+                show_default="Variável de ambiente MORPH_SCRAPER_ENABLE_REMOTEDB ou valor padrão N")
+@click.option('--sqlalchemy_dburi',
+                default=lambda: 
+                    os.environ.get('MORPH_SQLALCHEMY_DATABASE_URI'), 
+                help="DBURI para acesso ao banco de dados. Ex: mysql+pymysql://aaa:xxx@remotemysql.com:3306/aaa. Default Variável de ambiente MORPH_SQLALCHEMY_DATABASE_URI")
+def executa_scraper(skip_informe_diario_atual='N', skip_informacoes_cadastrais='N', skip_informe_diario_historico='N', periodo_inicial='202012',
+    compara_antes_insercao='N', limpa_acervo_antigo='S', enable_remotedb='S', sqlalchemy_dburi=None):
     print(f'Período inicial para buscar os informes diários {periodo_inicial}')
     init()
+    #print ('enable_remote_db', enable_remotedb)
 
-    #Init engine
-    dbuser = os.environ.get('MORPH_MYSQL_DBUSER', 'aaa')
-    pwd = os.environ.get('MORPH_MYSQL_PWD', 'xxx')
-    server  = os.environ.get('MORPH_MYSQL_SERVER', 'remotemysql.com:3306')
-    db_instance = os.environ.get('MORPH_MYSQL_DBINSTANCE', 'aaa')
-    connection_string = 'mysql+pymysql://'+dbuser+':'+pwd+'@'+server+'/'+db_instance
-    engine = create_engine(connection_string)
+    if (skip_informe_diario_atual == 'N'):
+        skip_informe_diario_atual=False
+    else: skip_informe_diario_atual=True
+    
+    if (skip_informacoes_cadastrais == 'N'):
+        skip_informacoes_cadastrais=False
+    else: skip_informacoes_cadastrais=True
+    
+    if (skip_informe_diario_historico == 'N'):  
+        skip_informe_diario_historico=False
+    else: skip_informe_diario_historico=True
     
     if (compara_antes_insercao == 'N'):
         compara_antes_insercao=False
@@ -70,59 +86,90 @@ def executa_scraper(skip_informacoes_cadastrais=False, skip_informe_diario_histo
     if (enable_remotedb == 'S'):
         enable_remotedb = True
     else: enable_remotedb = False
+    #print ('enable_remote_db', enable_remotedb)
 
+    engine=None
+    if (enable_remotedb):
+        #Init engine
+        if (sqlalchemy_dburi):
+            #print ('Iniciando engine para a base de dados', sqlalchemy_dburi)
+            print ('Iniciando engine para a base de dados')
+            #engine = create_engine(sqlalchemy_dburi, echo=True)
+            engine = create_engine(sqlalchemy_dburi)
+        else:
+            print('Desabilitando enable_remotedb pois não foi encontrado a URI para acesso ao banco.')
+            enable_remotedb=False
+    #else: print('Carga em banco de dados está desabilitada')
+    
     if (limpa_acervo_antigo):
         executa_limpeza_acervo_antigo()
    
-    executa_scraper_informe_diario_por_periodo(obtem_ultimo_periodo(), compara_antes_insercao, enable_remotedb, engine)
+    if (not skip_informe_diario_atual):
+        executa_scraper_informe_diario_por_periodo(obtem_ultimo_periodo(), compara_antes_insercao, enable_remotedb, engine)
 
     if (not skip_informacoes_cadastrais):
         executa_scraper_dados_cadastrais(enable_remotedb, engine)
 
     print(f'Período inicial para buscar os informes diários {periodo_inicial}')
     if (not skip_informe_diario_historico):
-        executa_scraper_informe_diario_historico(periodo_inicial)
+        executa_scraper_informe_diario_historico(periodo_inicial, compara_antes_insercao, enable_remotedb, engine)
 
-def executa_scraper_informe_diario_historico(periodo_inicial):
+    if (enable_remotedb):
+        importa_dados_remotos(engine)
+
+def executa_scraper_informe_diario_historico(periodo_inicial, compara_antes_insercao, enable_remotedb, engine):
     periodos = obtem_periodos(periodo_inicial)
     for periodo in periodos: 
-        executa_scraper_informe_diario_por_periodo(periodo)
+        executa_scraper_informe_diario_por_periodo(periodo, compara_antes_insercao, enable_remotedb, engine)
 
-def executa_scraper_informe_diario_por_periodo(periodo, compara_antes_insercao=True, enable_remotedb=False, engine=None):
+def executa_scraper_informe_diario_por_periodo(periodo, compara_antes_insercao, enable_remotedb, engine):
     df2 = None
     result, informe_diario_df = captura_arquivo_informe(periodo)
     
+    existe_dados_origem=(informe_diario_df is not None \
+        and not informe_diario_df.empty)   
+
     # Caso tenha sido obtida e lido um novo arquivo com sucesso...
-    if not informe_diario_df.empty and result in (1,2):
+    if existe_dados_origem and result in (1,2):
         if (enable_remotedb):
-            print('Inserindo informe diário no banco de dados remoto...')
-            informe_diario_df.set_index(['COD_CNPJ', 'DT_REF'], inplace=True)
-
-            # it does not matter if if_row_exists is set
-            # to "update" or "ignore" for table creation
-            upsert(engine=engine,
-               df=informe_diario_df,
-               table_name='informe_diario',
-               if_row_exists='update'
-               #,dtype=dtype
-            )
-
-        informe_diario_df.sort_values(by=['COD_CNPJ', 'DT_REF'])
-                   
-        df2 = None
-        if compara_antes_insercao:
-            df2 = recupera_informe_diario(periodo)
-        else: df2 = pd.DataFrame()
-        if not df2.empty:
-            df2['DT_REF']=pd.to_datetime(df2['DT_REF'], errors='coerce', format='%Y-%m-%d')
-        existe_dados_origem=(informe_diario_df is not None \
-        and not informe_diario_df.empty)
-        existe_dados_diferentes=(df2.empty or (not informe_diario_df.equals(df2)))
+            carrega_informe_remoto(informe_diario_df, engine)
+        else: carrega_informe_local(informe_diario_df, periodo, compara_antes_insercao)
     else:
-        existe_dados_origem = False    
-    if  existe_dados_origem and existe_dados_diferentes:
+        print (f'Não foram encontrados novos registros no arquivo para o periodo {periodo}...')
+
+def carrega_informe_remoto(informe_diario_df, engine):
+    print('Inserindo informe diário no banco de dados remoto...')
+    informe_diario_df.set_index(['COD_CNPJ', 'DT_REF'], inplace=True)
+
+    # it does not matter if if_row_exists is set
+    # to "update" or "ignore" for table creation
+    upsert(engine=engine,
+        df=informe_diario_df,
+        table_name='informe_diario',
+        if_row_exists='update'
+        #,dtype=dtype
+    )
+    
+    print('Finalizada inserção de informe diário no banco de dados remoto...')
+
+def carrega_informe_local(informe_diario_df, periodo, compara_antes_insercao):
+    print('Inserindo informe diário no banco de dados local...')
+
+    informe_diario_df.sort_values(by=['COD_CNPJ', 'DT_REF'])
+                   
+    df2 = None
+    if compara_antes_insercao:
+        df2 = recupera_informe_diario(periodo)
+    else: df2 = pd.DataFrame()
+
+    if not df2.empty:
+        df2['DT_REF']=pd.to_datetime(df2['DT_REF'], errors='coerce', format='%Y-%m-%d')
+
+    existe_dados_diferentes=(df2.empty or (not informe_diario_df.equals(df2)))
+    
+    if existe_dados_diferentes:
         if df2.empty:
-            salva_informe_periodo(informe_diario_df, periodo)
+            salva_informe_periodo(informe_diario_df)
         else:
             print('Iniciando a comparação dos dados recebidos e dos dados já inseridos no banco de dados...')
             novos_dados=[]
@@ -153,11 +200,9 @@ def executa_scraper_informe_diario_por_periodo(periodo, compara_antes_insercao=T
             # Como o scraperwiki fornece apenas o save que faz um autocommit 
             # por registro, só vamos salvar no banco os registros que 
             # já identificarmos que são realmente novos dados 
-            salva_informe_periodo(novos_dados_df, periodo)
-    
+            salva_informe_periodo(novos_dados_df)
     else:
-        print (f'Não foram encontrados novos registros no arquivo para o periodo {periodo}...')
-
+        print ('Não encontrou novos dados a serem atualizados localmente')
 
 def recupera_informe_diario(periodo):
     query=f"COD_CNPJ, DT_REF, CNPJ_FUNDO, DT_COMPTC, VL_TOTAL, VL_QUOTA, VL_PATRIM_LIQ, CAPTC_DIA, RESG_DIA, NR_COTST from informe_diario where strftime('%Y%m', DT_REF) = '{periodo}' order by COD_CNPJ, DT_REF"
@@ -165,6 +210,38 @@ def recupera_informe_diario(periodo):
     df=pd.DataFrame(result)
     return df
 
+def importa_dados_remotos(engine):
+    print ('Iniciando importação dos dados remotos na base local')
+    last_month = datetime.today() - timedelta(days=30)
+    last_month = last_month.strftime('%Y-%m-%d')
+
+    sql=f'''select * from informe_diario
+        where informe_diario.DT_REF >= '{last_month}' or 
+        not exists (
+            select 1 from informe_diario d2
+            where informe_diario.COD_CNPJ = d2.COD_CNPJ
+            and d2.DT_REF > informe_diario.DT_REF
+            and year(informe_diario.DT_REF) = year(d2.DT_REF)
+            and month(informe_diario.DT_REF) = month(d2.DT_REF)
+        )'''
+    
+    try:
+        print('Carregando informes diários a partir da base remota...')
+        informe_diario_df = pd.read_sql(
+            sql,
+            con=engine,
+            parse_dates=['DT_REF']
+        )
+        
+        salva_informe_periodo(informe_diario_df)
+ 
+    except (sqlite3.OperationalError, sqlalchemy.exc.OperationalError) as err:        
+        print('Falha ao carregar dados da base remota...', err)
+        print(type(err))    # the exception instance
+        print(err.args)     # arguments stored in .args
+
+
+   
 def captura_arquivo_informe(periodo):
     base_url = f'http://dados.cvm.gov.br/dados/FI/DOC/INF_DIARIO/DADOS/'
     filename=f'inf_diario_fi_{periodo}.csv'
@@ -204,7 +281,7 @@ def captura_arquivo_informe(periodo):
         return 0, df_empty
 
     # Cria um campo só com os números do CNPJ na primeira coluna
-    df.insert(0, 'COD_CNPJ', df['CNPJ_FUNDO'].str.replace(r'\D+', '').str.zfill(14))
+    df.insert(0, 'COD_CNPJ', df['CNPJ_FUNDO'].str.replace(r'\D+', '', regex=True).str.zfill(14))
     # Cria um campo com a data formatada na segunda coluna
     df.insert(1, 'DT_REF', pd.to_datetime(df['DT_COMPTC'], errors='coerce', format='%Y-%m-%d'))
 
@@ -252,7 +329,7 @@ def obtem_periodos(periodo_inicial='201912'):
 
     return periodos
 
-def salva_informe_periodo(informe_diario_df, periodo):
+def salva_informe_periodo(informe_diario_df):
     if informe_diario_df is None or informe_diario_df.empty:
         print('Recebeu dados vazios!')
         return False
@@ -292,6 +369,7 @@ def executa_scraper_dados_cadastrais(enable_remotedb, engine):
 
     #periodo = periodo.strftime('%Y%m%d')
     print (f'Serão obtidos os dados cadastrais publicados pela CVM...')
+    print ('enable_remotedb', enable_remotedb)
     df = captura_arquivo_dados_cadastrais()
     if df is None or df.empty:
         print('Recebeu dados vazios!')
@@ -330,6 +408,10 @@ def captura_arquivo_dados_cadastrais():
 
     print(f'Foram lidos {len(df.index)} registros do arquivos.')
 
+    df=df[df['TP_FUNDO']=='FI']
+    
+    print(f'Após o filtro de apenas fundos do tipo de fundos de investimentos, obteve-se {len(df.index)} fundos.')
+ 
     # Filtra por situações dos fundos
     #    CANCELADA
     #    EM FUNCIONAMENTO NORMAL
@@ -339,8 +421,14 @@ def captura_arquivo_dados_cadastrais():
 
     print(f'Após o filtro dos fundos cancelados ou em fase pré-operacional, obteve-se {len(df.index)} fundos.')
 
-    # Cria um campo só com os números do CNPJ
-    df['COD_CNPJ'] = df['CNPJ_FUNDO'].str.replace(r'\D+', '').str.zfill(14)
+    df.drop_duplicates(subset=['TP_FUNDO', 'CNPJ_FUNDO'], keep ='first', inplace=True)
+    print(f'Após o filtro removendo os fundos duplicados, obteve-se {len(df.index)} fundos.')
+
+
+
+   # Cria um campo só com os números do CNPJ
+    
+    df['COD_CNPJ'] = df['CNPJ_FUNDO'].str.replace(r'\D+', '', regex=True).str.zfill(14)
 
     # TODO: Descartar colunas desinteressantes
     #
@@ -352,27 +440,40 @@ def salva_dados_cadastrais(df, enable_remotedb, engine):
     if df is None or df.empty:
         print('Recebeu dados cadastrais vazios!')
         return False
-
-    try:
-        if (enable_remotedb):
-            print('Salvando dados cadastrais no banco de dados remoto...')
-            df.set_index(['COD_CNPJ'], inplace=True)
+    if (enable_remotedb):
+        salva_dados_cadastrais_remoto(df, engine)
+    else:
+        print('Serão salvos os dados localmente...')
+        salva_dados_cadastrais_local(df)
     
-            # it does not matter if if_row_exists is set
-            # to "update" or "ignore" for table creation
-            upsert(engine=engine,
-               df=df,
-               table_name='dados_cadastrais',
-               if_row_exists='update'
-               #,dtype=dtype
-            )
+def salva_dados_cadastrais_remoto(df, engine):
+    try:
+        print('Salvando dados cadastrais no banco de dados remoto...')
+        df.set_index(['TP_FUNDO', 'COD_CNPJ'], inplace=True)
+
+        # it does not matter if if_row_exists is set
+        # to "update" or "ignore" for table creation
+        upsert(engine=engine,
+            df=df,
+            table_name='dados_cadastrais',
+            if_row_exists='update'
+            #,dtype=dtype
+        )
+    except IndexError as err:
+        print(f'Falha de índice ao salvar registros dos dados cadastrais no banco de dados remoto...', err)
+        print ('Índice', df.index.names)
+        print(df.index[df.index.duplicated(keep=False)])
+        print(type(err))    # the exception instance
+        print(err.args)     # arguments stored in .args
     except Exception as err:
         print(f'Falha ao salvar registros dos dados cadastrais no banco de dados remoto...', err)
         print(type(err))    # the exception instance
         print(err.args)     # arguments stored in .args
-        return None
+        return None   
 
+def salva_dados_cadastrais_local(df):
     try:
+        print('Salvando dados cadastrais no banco de dados local...')
         records_list=df.to_dict('records')
         batch_size = 1000
         chunks = (len(records_list) - 1) // batch_size + 1
