@@ -811,15 +811,20 @@ def executa_limpeza_acervo_antigo_remoto(engine):
     last_month = datetime.today() - timedelta(days=30)
     last_month = last_month.strftime('%Y-%m-%d')
 
-    sql_delete=f'''delete from informe_diario
-        where informe_diario.DT_REF < '{last_month}' and 
-        exists (
-            select 1 from informe_diario d2
-            where informe_diario.COD_CNPJ = d2.COD_CNPJ
-            and informe_diario.DT_REF < d2.DT_REF
-            and informe_diario.ANO_REF=d2.ANO_REF
-            and informe_diario.MES_REF=d2.MES_REF
-        )''' 
+    sql_delete=f'''delete i from informe_diario i
+	left join (
+		select i3.COD_CNPJ, max(i3.DT_REF) as DT_REF, i3.ANO_REF, i3.MES_REF
+		from informe_diario i3
+		group by COD_CNPJ, ANO_REF, MES_REF
+	) i2
+	on (
+		i.COD_CNPJ=i2.COD_CNPJ
+		and i.ANO_REF=i2.ANO_REF
+		and i.MES_REF=i2.MES_REF
+	)
+	where i.DT_REF < '{last_month}' and
+	i.DT_REF < i2.DT_REF
+        ''' 
     try:
         print('Apagando acervo antigo da base remota...')
         print(sql_delete)
