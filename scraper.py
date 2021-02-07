@@ -64,8 +64,8 @@ def executa_scraper(skip_informe_diario_atual='N', skip_informacoes_cadastrais='
     #print ('enable_remote_db', enable_remotedb)
 
     if (skip_informe_diario_atual == 'N'):
-        skip_informe_diario_atual=False
-    else: skip_informe_diario_atual=True
+        skip_informe_diario_atual = False
+    else: skip_informe_diario_atual = True
     
     if (skip_informacoes_cadastrais == 'N'):
         skip_informacoes_cadastrais=False
@@ -133,9 +133,13 @@ def executa_scraper_informe_diario_por_periodo(periodo, compara_antes_insercao, 
     # Caso tenha sido obtida e lido um novo arquivo com sucesso...
     if existe_dados_origem and result in (1,2):
         if (limpa_dados_diarios):
-            grupos_fundos = informe_diario_df.groupby(by=['COD_CNPJ'])
-            informe_diario_df=grupos_fundos.apply(lambda g: g[g['DT_REF'] == g['DT_REF'].max()])
-            print(f'Número de registros após filtro dos dados diários {len(informe_diario_df.index)}...')
+            print('Ignorando dados diários desnecessários presentes no informe...')
+            grp = informe_diario_df.groupby(by=['COD_CNPJ'])
+            ultimo_informe_df=grp.apply(lambda g: g[g['DT_REF'] == g['DT_REF'].max()])
+            ultimo_informe_df.reset_index(inplace=True, drop=True)
+            informe_diario_df=ultimo_informe_df
+            print(f'Número de registros após ignorar os dados diários desnecessário {len(informe_diario_df.index)}...')
+            #print(informe_diario_df)
         if (enable_remotedb):
             carrega_informe_remoto(informe_diario_df, engine)
         else: carrega_informe_local(informe_diario_df, periodo, compara_antes_insercao)
@@ -160,7 +164,7 @@ def carrega_informe_remoto(informe_diario_df, engine):
 def carrega_informe_local(informe_diario_df, periodo, compara_antes_insercao):
     print('Inserindo informe diário no banco de dados local...')
 
-    informe_diario_df.sort_values(by=['COD_CNPJ', 'DT_REF'])
+    informe_diario_df.sort_values(by=['COD_CNPJ', 'DT_REF'], axis='index')
                    
     df2 = None
     if compara_antes_insercao:
@@ -219,19 +223,19 @@ def importa_dados_remotos(engine):
     print ('Iniciando importação dos dados remotos na base local')
     last_month = datetime.today() - timedelta(days=30)
     last_month = last_month.strftime('%Y-%m-%d')
-    sql=f'''select COD_CNPJ,
-            CNPJ_FUNDO,
-            DT_REF,
-            DT_COMPTC,
-            VL_QUOTA
+    sql=f'''select "COD_CNPJ",
+            "CNPJ_FUNDO",
+            "DT_REF",
+            "DT_COMPTC",
+            "VL_QUOTA"
         from informe_diario
-        where informe_diario.DT_REF >= '{last_month}' or 
+        where informe_diario."DT_REF" >= '{last_month}' or 
         not exists (
             select 1 from informe_diario d2
-            where informe_diario.COD_CNPJ = d2.COD_CNPJ
-            and d2.DT_REF > informe_diario.DT_REF
-            and informe_diario.ANO_REF = d2.ANO_REF
-            and informe_diario.MES_REF = d2.MES_REF
+            where informe_diario."COD_CNPJ" = d2."COD_CNPJ"
+            and d2."DT_REF" > informe_diario."DT_REF"
+            and informe_diario."ANO_REF" = d2."ANO_REF"
+            and informe_diario."MES_REF" = d2."MES_REF"
         )'''
     
     try:
@@ -379,7 +383,6 @@ def executa_scraper_dados_cadastrais(enable_remotedb, engine):
 
     #periodo = periodo.strftime('%Y%m%d')
     print (f'Serão obtidos os dados cadastrais publicados pela CVM...')
-    print ('enable_remotedb', enable_remotedb)
     df = captura_arquivo_dados_cadastrais()
     if df is None or df.empty:
         print('Recebeu dados vazios!')
@@ -459,6 +462,8 @@ def salva_dados_cadastrais(df, enable_remotedb, engine):
 def salva_dados_cadastrais_remoto(df, engine):
     try:
         print('Salvando dados cadastrais no banco de dados remoto...')
+        
+        #df=df[df['COD_CNPJ']=='97711801000105']
         df.set_index(['TP_FUNDO', 'COD_CNPJ'], inplace=True)
 
         # it does not matter if if_row_exists is set
@@ -811,12 +816,14 @@ def executa_limpeza_acervo_antigo_remoto(engine):
     last_month = datetime.today() - timedelta(days=30)
     last_month = last_month.strftime('%Y-%m-%d')
 
-    sql_delete=f'''delete i from informe_diario i
-	left join (
+    sql_delete=f'''with ultima_quota AS
+        (
 		select i3.COD_CNPJ, max(i3.DT_REF) as DT_REF, i3.ANO_REF, i3.MES_REF
 		from informe_diario i3
 		group by COD_CNPJ, ANO_REF, MES_REF
-	) i2
+        )
+        delete from informe_diario i
+	left join ultima_quota i2
 	on (
 		i.COD_CNPJ=i2.COD_CNPJ
 		and i.ANO_REF=i2.ANO_REF
@@ -825,9 +832,27 @@ def executa_limpeza_acervo_antigo_remoto(engine):
 	where i.DT_REF < '{last_month}' and
 	i.DT_REF < i2.DT_REF
         ''' 
+
+    sql_delete=f'''with ultima_quota AS
+        (
+		select i3."COD_CNPJ", max(i3."DT_REF") as "DT_REF", i3."ANO_REF", i3."MES_REF"
+		from informe_diario i3
+		group by "COD_CNPJ", "ANO_REF", "MES_REF"
+        )
+        delete from informe_diario i
+	where exists (select 1 from ultima_quota i2
+	    where
+	    i."COD_CNPJ"=i2."COD_CNPJ"
+	    and i."ANO_REF"=i2."ANO_REF"
+	    and i."MES_REF"=i2."MES_REF"
+	    and i."DT_REF" < i2."DT_REF"
+	)
+	and i."DT_REF" < '{last_month}'
+        ''' 
+
     try:
         print('Apagando acervo antigo da base remota...')
-        print(sql_delete)
+        #print(sql_delete)
         with engine.connect() as connection:
             result = connection.execute(sql_delete)
         print('Limpeza executada com sucesso...')
@@ -853,7 +878,7 @@ def executa_limpeza_acervo_antigo_local():
        #d. 
     try:
         print('Apagando acervo antigo da base local...')
-        print(sql_delete)
+        #print(sql_delete)
         scraperwiki.sqlite.execute(sql_delete)
         print('Limpeza executada com sucesso...')
     except (sqlite3.OperationalError, sqlalchemy.exc.OperationalError) as err:        

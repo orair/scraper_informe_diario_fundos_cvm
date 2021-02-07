@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS dados_cadastrais (
         DENOM_SOCIAL VARCHAR(400), 	
         DT_REG TEXT, 	
         DT_CONST TEXT,
-	CD_CVM VARCHAR(7),
+	CD_CVM NUMERIC(7,0),
         DT_CANCEL TEXT, 	
         SIT VARCHAR(40),
         DT_INI_SIT TEXT, 	
@@ -102,6 +102,8 @@ CREATE INDEX idx_dados_cadastrais_08
         ON dados_cadastrais (CNPJ_CONTROLADOR);
 CREATE INDEX idx_dados_cadastrais_09
         ON dados_cadastrais (TP_FUNDO);
+CREATE INDEX idx_dados_cadastrais_10
+        ON dados_cadastrais (CD_CVM);
 
 
 CREATE INDEX idx_informe_diario_01

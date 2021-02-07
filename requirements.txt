@@ -11,3 +11,4 @@ pymysql
 pangres
 bizdays
 tqdm
+psycopg2
