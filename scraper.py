@@ -461,7 +461,7 @@ def salva_dados_cadastrais(df, enable_remotedb, skip_dados_cad_remoto, engine):
     if df is None or df.empty:
         print('Recebeu dados cadastrais vazios!')
         return False
-    if (enable_remotedb and not skip_dados_cad_remoto:
+    if (enable_remotedb and not skip_dados_cad_remoto):
         salva_dados_cadastrais_remoto(df, engine)
     else:
         print('Serão salvos os dados localmente...')
