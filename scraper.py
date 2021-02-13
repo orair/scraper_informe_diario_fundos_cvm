@@ -40,7 +40,7 @@ import sqlalchemy
 @click.option('--periodo_inicial', 
                 default=lambda: 
                     os.environ.get('MORPH_SCRAPER_INFORME_CVM_PERIODO_INICIAL', (datetime.today() - timedelta(days=32)).strftime('%Y%m')),
-                show_default="Variável de ambiente MORPH_SCRAPER_INFORME_DIARIO_CVM_PERIODO_INICIAL ou o valor padrão (últimos dois meses)")
+                show_default="Parâmetro deve ser informado no formato \"AAAAMM\". Variável de ambiente MORPH_SCRAPER_INFORME_DIARIO_CVM_PERIODO_INICIAL ou o valor padrão (últimos dois meses)")
 @click.option('--compara_antes_insercao', 
                 default=lambda: 
                     os.environ.get('MORPH_SCRAPER_COMPARA_ANTES_INSERCAO', 'N'), 
@@ -223,19 +223,19 @@ def importa_dados_remotos(engine):
     print ('Iniciando importação dos dados remotos na base local')
     last_month = datetime.today() - timedelta(days=30)
     last_month = last_month.strftime('%Y-%m-%d')
-    sql=f'''select "COD_CNPJ",
-            "CNPJ_FUNDO",
-            "DT_REF",
-            "DT_COMPTC",
-            "VL_QUOTA"
+    sql=f'''select COD_CNPJ,
+            CNPJ_FUNDO,
+            DT_REF,
+            DT_COMPTC,
+            VL_QUOTA
         from informe_diario
-        where informe_diario."DT_REF" >= '{last_month}' or 
+        where informe_diario.DT_REF >= '{last_month}' or 
         not exists (
             select 1 from informe_diario d2
-            where informe_diario."COD_CNPJ" = d2."COD_CNPJ"
-            and d2."DT_REF" > informe_diario."DT_REF"
-            and informe_diario."ANO_REF" = d2."ANO_REF"
-            and informe_diario."MES_REF" = d2."MES_REF"
+            where informe_diario.COD_CNPJ = d2.COD_CNPJ
+            and d2.DT_REF > informe_diario.DT_REF
+            and informe_diario.ANO_REF = d2.ANO_REF
+            and informe_diario.MES_REF = d2.MES_REF
         )'''
     
     try:
@@ -833,22 +833,39 @@ def executa_limpeza_acervo_antigo_remoto(engine):
 	i.DT_REF < i2.DT_REF
         ''' 
 
-    sql_delete=f'''with ultima_quota AS
-        (
-		select i3."COD_CNPJ", max(i3."DT_REF") as "DT_REF", i3."ANO_REF", i3."MES_REF"
-		from informe_diario i3
-		group by "COD_CNPJ", "ANO_REF", "MES_REF"
-        )
-        delete from informe_diario i
-	where exists (select 1 from ultima_quota i2
-	    where
-	    i."COD_CNPJ"=i2."COD_CNPJ"
-	    and i."ANO_REF"=i2."ANO_REF"
-	    and i."MES_REF"=i2."MES_REF"
-	    and i."DT_REF" < i2."DT_REF"
+    sql_delete=f''' 
+        delete from informe_diario 
+	where DT_REF < '{last_month}' 
+        and (COD_CNPJ, DT_REF) IN 
+        ( 
+                select i2.COD_CNPJ, i2.DT_REF from informe_diario i2
+                where
+                exists (select 1 from informe_diario i3
+                    where
+                    i2.COD_CNPJ=i3.COD_CNPJ
+                    and i2.ANO_REF=i3.ANO_REF
+	            and i2.MES_REF=i3.MES_REF
+	            and i3.DT_REF < i2.DT_REF
+                )
 	)
-	and i."DT_REF" < '{last_month}'
         ''' 
+
+    #sql_pg_delete=f'''with ultima_quota AS
+    #    (
+    #		select i3."COD_CNPJ", max(i3."DT_REF") as "DT_REF", i3."ANO_REF", i3."MES_REF"
+    #		from informe_diario i3
+    #		group by "COD_CNPJ", "ANO_REF", "MES_REF"
+    #    )
+    #    delete from informe_diario i
+    #	where exists (select 1 from ultima_quota i2
+    #	    where
+    #	    i."COD_CNPJ"=i2."COD_CNPJ"
+    #	    and i."ANO_REF"=i2."ANO_REF"
+    #	    and i."MES_REF"=i2."MES_REF"
+    #	    and i."DT_REF" < i2."DT_REF"
+    #	)
+    #	and i."DT_REF" < '{last_month}'
+    #        ''' 
 
     try:
         print('Apagando acervo antigo da base remota...')
