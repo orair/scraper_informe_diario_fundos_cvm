@@ -61,7 +61,7 @@ import sqlalchemy
                 default=lambda: 
                     os.environ.get('MORPH_SQLALCHEMY_DATABASE_URI'), 
                 help="DBURI para acesso ao banco de dados. Ex: mysql+pymysql://aaa:xxx@remotemysql.com:3306/aaa. Default Variável de ambiente MORPH_SQLALCHEMY_DATABASE_URI")
-def executa_scraper(skip_informe_diario_atual='N', skip_informacoes_cadastrais='N', skip_informe_diario_historico='N', skip_dados_cad_remoto='N', periodo_inicial='202012',
+def executa_scraper(skip_informe_diario_atual='N', skip_informacoes_cadastrais='N', skip_informe_diario_historico='N', skip_salva_dados_cadastrais_remoto='N', periodo_inicial='202012',
     compara_antes_insercao='N', limpa_acervo_antigo='S', enable_remotedb='S', sqlalchemy_dburi=None):
     print(f'Período inicial para buscar os informes diários {periodo_inicial}')
     init()
@@ -79,9 +79,9 @@ def executa_scraper(skip_informe_diario_atual='N', skip_informacoes_cadastrais='
         skip_informe_diario_historico=False
     else: skip_informe_diario_historico=True
 
-    if (skip_dados_cad_remoto == 'N'):  
-        skip_dados_cad_remoto=False
-    else: skip_dados_cad_remoto=True
+    if (skip_salva_dados_cadastrais_remoto == 'N'):  
+        skip_salva_dados_cadastrais_remoto=False
+    else: skip_salva_dados_cadastrais_remoto=True
  
     if (compara_antes_insercao == 'N'):
         compara_antes_insercao=False
@@ -116,7 +116,7 @@ def executa_scraper(skip_informe_diario_atual='N', skip_informacoes_cadastrais='
         executa_scraper_informe_diario_por_periodo(obtem_ultimo_periodo(), compara_antes_insercao, enable_remotedb, engine, False)
 
     if (not skip_informacoes_cadastrais):
-        executa_scraper_dados_cadastrais(enable_remotedb, skip_dados_cad_remoto, engine)
+        executa_scraper_dados_cadastrais(enable_remotedb, skip_salva_dados_cadastrais_remoto, engine)
 
     print(f'Período inicial para buscar os informes diários {periodo_inicial}')
     if (not skip_informe_diario_historico):
@@ -380,7 +380,7 @@ def salva_informe_periodo(informe_diario_df):
         print(err.args)     # arguments stored in .args
         return None
 
-def executa_scraper_dados_cadastrais(enable_remotedb, skip_dados_cad_remoto, engine):
+def executa_scraper_dados_cadastrais(enable_remotedb, skip_salva_dados_cadastrais_remoto, engine):
     #from bizdays import Calendar
     #cal = Calendar.load('feriados_nacionais_ANBIMA.csv')
     
@@ -395,7 +395,7 @@ def executa_scraper_dados_cadastrais(enable_remotedb, skip_dados_cad_remoto, eng
     if df is None or df.empty:
         print('Recebeu dados vazios!')
         return False
-    return salva_dados_cadastrais(df, enable_remotedb, skip_dados_cad_remoto, engine)
+    return salva_dados_cadastrais(df, enable_remotedb, skip_salva_dados_cadastrais_remoto, engine)
 
 def captura_arquivo_dados_cadastrais():
     base_url = f'http://dados.cvm.gov.br/dados/FI/CAD/DADOS/'
@@ -457,11 +457,11 @@ def captura_arquivo_dados_cadastrais():
     # idxColunas=[0,1,5,10,12,13,14,15,16,17,18,19,20,21,24,25,26,27,28,29,34,35]
     return df
 
-def salva_dados_cadastrais(df, enable_remotedb, skip_dados_cad_remoto, engine):
+def salva_dados_cadastrais(df, enable_remotedb, skip_salva_dados_cadastrais_remoto, engine):
     if df is None or df.empty:
         print('Recebeu dados cadastrais vazios!')
         return False
-    if (enable_remotedb and not skip_dados_cad_remoto):
+    if (enable_remotedb and not skip_salva_dados_cadastrais_remoto):
         salva_dados_cadastrais_remoto(df, engine)
     else:
         print('Serão salvos os dados localmente...')
