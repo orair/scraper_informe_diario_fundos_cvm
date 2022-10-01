@@ -274,7 +274,7 @@ def captura_arquivo_informe(periodo):
     # No início de meses, ainda não existira o arquivo com as cotas dos meses correntes,
     # Por isto, vamos retornar simplesmente um dataframe vazio caso não encontre 
     # o arquivo na url consultada
-    if result == 404:
+    if result != 200:
         df_empty = pd.DataFrame({'A' : []})
         print(f'Não foi encontrado o arquivo {filename} no servidor da CVM, se for o início de um mês e o arquivo se referir ao mês atual, isto é esperado... URL: {url}')
         return 0, df_empty
@@ -795,8 +795,10 @@ def _download_file(base_url, filename):
         head_request = requests.head(url)
         status_code=head_request.status_code
         if (head_request.status_code!=200):
+            if (status_code==301)
+                print('Retornou código de que o artefato foi movido permanentemente. Acesse a documentação e verifique se há atualizações')
             print(f'Falha ao verificar url status code {status_code} e...{head_request}')
-            return 404
+            return status_code
 
         remote_size = int(head_request.headers.get('Content-Length', 0))
         local_path=Path(local_filename)
