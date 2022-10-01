@@ -266,6 +266,7 @@ def importa_dados_remotos(engine):
 def captura_arquivo_informe(periodo):
     base_url = f'http://dados.cvm.gov.br/dados/FI/DOC/INF_DIARIO/DADOS'
     filename=f'inf_diario_fi_{periodo}.zip'
+    url = f'{base_url}/{filename}'
 
     print(f'Verifica necessidade de download dos informes diários de {periodo}')
     result=_download_file(base_url, filename)
@@ -275,7 +276,7 @@ def captura_arquivo_informe(periodo):
     # o arquivo na url consultada
     if result == 404:
         df_empty = pd.DataFrame({'A' : []})
-        print(f'Não foi encontrado o arquivo {filename} no servidor da CVM, se for o início de um mês e o arquivo se referir ao mês atual, isto é esperado...')
+        print(f'Não foi encontrado o arquivo {filename} no servidor da CVM, se for o início de um mês e o arquivo se referir ao mês atual, isto é esperado... URL: {url}')
         return 0, df_empty
         
     try:
@@ -792,8 +793,9 @@ def _download_file(base_url, filename):
     
     try: 
         head_request = requests.head(url)
+        status_code=head_request.status_code
         if (head_request.status_code!=200):
-            #print('Falha ao verificar url...', head_request)
+            print(f'Falha ao verificar url status code {status_code} e...{head_request}')
             return 404
 
         remote_size = int(head_request.headers.get('Content-Length', 0))
