@@ -796,7 +796,7 @@ def _download_file(base_url, filename):
         status_code=head_request.status_code
         if (head_request.status_code!=200):
             if (status_code==301):
-                print('Retornou código de que o artefato foi movido permanentemente. Acesse a documentação e verifique se há atualizações')
+                print(f'Retornou código de que o artefato foi movido permanentemente. Acesse a documentação e verifique se há atualizações {url}')
             print(f'Falha ao verificar url status code {status_code} e...{head_request}')
             return status_code
 
