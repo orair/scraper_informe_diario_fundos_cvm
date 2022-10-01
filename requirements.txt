@@ -3,7 +3,7 @@
 #-e git+http://github.com/openaustralia/scraperwiki-python.git@morph_defaults#egg=scraperwiki
 scraperwiki
 lxml
-cssselect==0.9.1
+cssselect
 pandas
 click
 sqlalchemy
