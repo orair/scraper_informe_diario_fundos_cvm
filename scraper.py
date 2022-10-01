@@ -411,10 +411,25 @@ def captura_arquivo_dados_cadastrais():
         # O delimitador dos csvs da CVM é o ';'
         # Como os dados estão salvos em ISO-8859-1, 
         # é necessário alterar o encoding durante a leitura dos dados
+        # "TP_FUNDO", "COD_CNPJ", "CNPJ_FUNDO", "DENOM_SOCIAL", "DT_REG", "DT_CONST", "CD_CVM", "DT_CANCEL", "SIT", "DT_INI_SIT", 
+        # "DT_INI_ATIV", "DT_INI_EXERC", "DT_FIM_EXERC", "CLASSE", "DT_INI_CLASSE", "RENTAB_FUNDO", "CONDOM", "FUNDO_COTAS", "FUNDO_EXCLUSIVO", "TRIB_LPRAZO", 
+        # "ENTID_INVEST", "TAXA_PERFM", "INF_TAXA_PERFM", "TAXA_ADM", "INF_TAXA_ADM", "VL_PATRIM_LIQ", "DT_PATRIM_LIQ", #"DIRETOR", "CNPJ_ADMIN", "ADMIN", 
+        # "PF_PJ_GESTOR", "CPF_CNPJ_GESTOR", "GESTOR", "CNPJ_AUDITOR", "AUDITOR", "CNPJ_CUSTODIANTE", "CUSTODIANTE", "CNPJ_CONTROLADOR", "CONTROLADOR", "PUBLICO_ALVO"
+        Columns (14,17,18,20,22,24,27,37,38) 
+        tipos={'CLASSE': 'string',
+        'CONDOM': 'string',
+        'FUNDO_COTAS': 'string',
+        'TRIB_LPRAZO': 'string',
+        'TAXA_PERFM': 'string',
+        'INF_TAXA_ADM': 'string','
+        'DIRETOR': 'string',
+        'CNPJ_CONTROLADOR': 'string',
+        }
         df = pd.read_csv(
             filename,
             sep=';',
-            encoding='latin1'
+            encoding='latin1',
+            dtypes=tipos
         )
         #print(df.head())
     except (IOError, urllib.error.HTTPError) as err:        
