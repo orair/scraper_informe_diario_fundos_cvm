@@ -265,7 +265,7 @@ def importa_dados_remotos(engine):
    
 def captura_arquivo_informe(periodo):
     base_url = f'http://dados.cvm.gov.br/dados/FI/DOC/INF_DIARIO/DADOS'
-    filename=f'inf_diario_fi_{periodo}.csv'
+    filename=f'inf_diario_fi_{periodo}.zip
 
     print(f'Verifica necessidade de download dos informes diários de {periodo}')
     result=_download_file(base_url, filename)
