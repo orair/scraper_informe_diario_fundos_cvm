@@ -416,7 +416,7 @@ def captura_arquivo_dados_cadastrais():
         # "DT_INI_ATIV", "DT_INI_EXERC", "DT_FIM_EXERC", "CLASSE", "DT_INI_CLASSE", "RENTAB_FUNDO", "CONDOM", "FUNDO_COTAS", "FUNDO_EXCLUSIVO", "TRIB_LPRAZO", 
         # "ENTID_INVEST", "TAXA_PERFM", "INF_TAXA_PERFM", "TAXA_ADM", "INF_TAXA_ADM", "VL_PATRIM_LIQ", "DT_PATRIM_LIQ", #"DIRETOR", "CNPJ_ADMIN", "ADMIN", 
         # "PF_PJ_GESTOR", "CPF_CNPJ_GESTOR", "GESTOR", "CNPJ_AUDITOR", "AUDITOR", "CNPJ_CUSTODIANTE", "CUSTODIANTE", "CNPJ_CONTROLADOR", "CONTROLADOR", "PUBLICO_ALVO"
-        Columns (14,17,18,20,22,24,27,37,38) 
+        #columns (14,17,18,20,22,24,27,37,38) 
         tipos={'CLASSE': 'string',
         'CONDOM': 'string',
         'FUNDO_COTAS': 'string',
