@@ -398,8 +398,9 @@ def executa_scraper_dados_cadastrais(enable_remotedb, skip_salva_dados_cadastrai
     return salva_dados_cadastrais(df, enable_remotedb, skip_salva_dados_cadastrais_remoto, engine)
 
 def captura_arquivo_dados_cadastrais():
-    base_url = f'http://dados.cvm.gov.br/dados/FI/CAD/DADOS/'
+    base_url = f'https://dados.cvm.gov.br/dados/FI/CAD/DADOS/'
     filename=f'cad_fi.csv'
+    url = f'{base_url}/{filename}'
 
     print(f'Verifica necessidade de download dos dados cadastrais dos fundos de investimento')
     _download_file(base_url, filename)
@@ -417,12 +418,12 @@ def captura_arquivo_dados_cadastrais():
         )
         #print(df.head())
     except (IOError, urllib.error.HTTPError) as err:        
-        print('Falha na leitura do arquivo ', filename, '...', err)
+        print('Falha na leitura do arquivo {} a partir da url {} com o erro {}'.format(filename, url, err))
         print(type(err))    # the exception instance
         print(err.args)     # arguments stored in .args
         return None
     except Exception as err:
-        print('Erro ao ler arquivo localmente', filename, '...', err)
+        print('Erro ao ler arquivo localmente{} a partir da url {} com o erro {}'.format(filename, url, err))
         print(type(err))    # the exception instance
         print(err.args)     # arguments stored in .args
         return None
