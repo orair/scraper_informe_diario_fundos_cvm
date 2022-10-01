@@ -264,7 +264,7 @@ def importa_dados_remotos(engine):
 
    
 def captura_arquivo_informe(periodo):
-    base_url = f'http://dados.cvm.gov.br/dados/FI/DOC/INF_DIARIO/DADOS'
+    base_url = f'https://dados.cvm.gov.br/dados/FI/DOC/INF_DIARIO/DADOS'
     filename=f'inf_diario_fi_{periodo}.zip'
     url = f'{base_url}/{filename}'
 
@@ -756,7 +756,7 @@ def create_views():
 
 def captura_arquivo_composicao_carteira(periodo):
     periodo=202005
-    base_url = f'http://dados.cvm.gov.br/dados/FI/DOC/CDA/DADOS/'
+    base_url = f'https://dados.cvm.gov.br/dados/FI/DOC/CDA/DADOS/'
     local_filename=f'cda_fi_{periodo}.zip'
     
     #blc1_filename=f'cda_fi_BLC_1_{periodo}.csv'
@@ -797,7 +797,7 @@ def _download_file(base_url, filename):
         if (head_request.status_code!=200):
             if (status_code==301):
                 print(f'Retornou código de que o artefato foi movido permanentemente. Acesse a documentação e verifique se há atualizações {url}')
-            print(f'Falha ao verificar url status code {status_code} e...{head_request}')
+            print(f'Falha ao verificar url status code {status_code} e...{head_request} url {url}')
             return status_code
 
         remote_size = int(head_request.headers.get('Content-Length', 0))
