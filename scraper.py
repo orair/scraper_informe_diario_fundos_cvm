@@ -274,9 +274,9 @@ def captura_arquivo_informe(periodo):
     # No início de meses, ainda não existira o arquivo com as cotas dos meses correntes,
     # Por isto, vamos retornar simplesmente um dataframe vazio caso não encontre 
     # o arquivo na url consultada
-    if result != 200:
+    if result not in (1,2):
         df_empty = pd.DataFrame({'A' : []})
-        print(f'Não foi encontrado o arquivo {filename} no servidor da CVM, se for o início de um mês e o arquivo se referir ao mês atual, isto é esperado... URL: {url}')
+        print(f'Não foi encontrado o arquivo {filename} no servidor da CVM, se for o início de um mês e o arquivo se referir ao mês atual, isto é esperado... URL: {url}. HTTP STATUS CODE: {result}')
         return 0, df_empty
         
     try:
@@ -439,7 +439,7 @@ def captura_arquivo_dados_cadastrais():
         print(err.args)     # arguments stored in .args
         return None
     except Exception as err:
-        print('Erro ao ler arquivo localmente{} a partir da url {} com o erro {}'.format(filename, url, err))
+        print('Erro ao ler arquivo localmente {} a partir da url {} com o erro {}'.format(filename, url, err))
         print(type(err))    # the exception instance
         print(err.args)     # arguments stored in .args
         return None
