@@ -421,7 +421,7 @@ def captura_arquivo_dados_cadastrais():
         'FUNDO_COTAS': 'string',
         'TRIB_LPRAZO': 'string',
         'TAXA_PERFM': 'string',
-        'INF_TAXA_ADM': 'string','
+        'INF_TAXA_ADM': 'string',
         'DIRETOR': 'string',
         'CNPJ_CONTROLADOR': 'string',
         }
