@@ -1,14 +1,16 @@
-
+-- 1. Limpeza de tabelas antigas para garantir nova estrutura
+DROP TABLE IF EXISTS informe_diario;
 DROP TABLE IF EXISTS dados_cadastrais;
 
+-- 2. Tabela de Cadastro
 CREATE TABLE IF NOT EXISTS dados_cadastrais (
         TP_FUNDO VARCHAR(20) NOT NULL,
-	COD_CNPJ VARCHAR(50) NOT NULL,
-        CNPJ_FUNDO VARCHAR(50) NOT NULL, 	
+	    COD_CNPJ VARCHAR(14) NOT NULL,
+        CNPJ_FUNDO VARCHAR(20) NOT NULL, 	
         DENOM_SOCIAL VARCHAR(400), 	
         DT_REG TEXT, 	
         DT_CONST TEXT,
-	CD_CVM NUMERIC(7,0),
+	    CD_CVM NUMERIC(7,0),
         DT_CANCEL TEXT, 	
         SIT VARCHAR(40),
         DT_INI_SIT TEXT, 	
@@ -24,7 +26,7 @@ CREATE TABLE IF NOT EXISTS dados_cadastrais (
         TRIB_LPRAZO TEXT, 	
         INVEST_QUALIF TEXT, 	
         ENTID_INVEST VARCHAR(1),
-	TAXA_PERFM TEXT, 	
+	    TAXA_PERFM TEXT, 	
         INF_TAXA_PERFM TEXT, 	
         TAXA_ADM TEXT, 	
         INF_TAXA_ADM TEXT, 	
@@ -48,18 +50,18 @@ CREATE TABLE IF NOT EXISTS dados_cadastrais (
 DROP TABLE IF EXISTS informe_diario;
 
 CREATE TABLE IF NOT EXISTS informe_diario (
-        COD_CNPJ VARCHAR(50) NOT NULL, 	
-        CNPJ_FUNDO VARCHAR(50) NOT NULL, 	
+        COD_CNPJ VARCHAR(14) NOT NULL, 	
+        CNPJ_FUNDO VARCHAR(20) NOT NULL, 	
         DT_REF DATE NOT NULL, 	
-        DT_COMPTC VARCHAR(50) NOT NULL, 	
-        VL_TOTAL NUMERIC(17,2), 	
+        DT_COMPTC VARCHAR(20) NOT NULL, 	
+        VL_TOTAL NUMERIC(20,2), 	
         VL_QUOTA NUMERIC(27,12), 	
         VL_PATRIM_LIQ NUMERIC(17,2), 	
         CAPTC_DIA NUMERIC(17,2), 	
         RESG_DIA NUMERIC(17,2), 	
         NR_COTST INTEGER,
-	ANO_REF INTEGER GENERATED ALWAYS AS (YEAR(DT_REF)) STORED,
-	MES_REF INTEGER GENERATED ALWAYS AS (MONTH(DT_REF)) STORED,
+	    ANO_REF INTEGER GENERATED ALWAYS AS (YEAR(DT_REF)) STORED,
+	    MES_REF INTEGER GENERATED ALWAYS AS (MONTH(DT_REF)) STORED,
         PRIMARY KEY(COD_CNPJ, DT_REF)
 );    
 
@@ -111,17 +113,17 @@ CREATE INDEX idx_informe_diario_01
 CREATE INDEX idx_informe_diario_02
         ON informe_diario (CNPJ_FUNDO);
 CREATE INDEX idx_informe_diario_03
-        ON informe_diario (DT_REF);
+        ON informe_diario (DT_REF desc);
 CREATE INDEX idx_informe_diario_04
         ON informe_diario (DT_COMPTC);
 CREATE UNIQUE INDEX idx_informe_diario_05
-        ON informe_diario (COD_CNPJ, DT_REF);
+        ON informe_diario (COD_CNPJ, DT_REF desc);
 CREATE UNIQUE INDEX idx_informe_diario_06
-        ON informe_diario (CNPJ_FUNDO, DT_REF);
+        ON informe_diario (CNPJ_FUNDO, DT_REF desc);
 CREATE INDEX idx_informe_diario_07
-        ON informe_diario (ANO_REF);
+        ON informe_diario (ANO_REF desc);
 CREATE INDEX idx_informe_diario_08
         ON informe_diario (MES_REF);
 CREATE INDEX idx_informe_diario_09
-        ON informe_diario (CNPJ_FUNDO, ANO_REF, MES_REF);
+        ON informe_diario (CNPJ_FUNDO, ANO_REF desc, MES_REF);
 
