@@ -23,41 +23,41 @@ import sqlalchemy
 @click.command("Gerenciador do Scraper dos Informes Diários de Fundos de Investimentos da CVM")
 @click.option('--skip_informe_diario_atual', 
                 default=lambda:
-                    os.environ.get('MORPH_SCRAPER_SKIP_INFORME_ATUAL', 'N'),
-                show_default="Variável de ambiente MORPH_SCRAPER_SKIP_INFORME_ATUAL ou N")
+                    os.environ.get('SCRAPER_SKIP_INFORME_ATUAL', 'N'),
+                show_default="Variável de ambiente SCRAPER_SKIP_INFORME_ATUAL ou N")
 @click.option('--skip_informacoes_cadastrais', 
                 default=lambda:
-                    os.environ.get('MORPH_SCRAPER_SKIP_INF_CAD', 'N'),
-                show_default="Variável de ambiente MORPH_SCRAPER_SKIP_INF_CAD ou N")
+                    os.environ.get('SCRAPER_SKIP_INF_CAD', 'N'),
+                show_default="Variável de ambiente SCRAPER_SKIP_INF_CAD ou N")
                 
 @click.option('--skip_informe_diario_historico', 
                 default=lambda:
-                    os.environ.get('MORPH_SCRAPER_SKIP_INFORME_HIST', 'N'),
-                show_default="Variável de ambiente MORPH_SCRAPER_SKIP_INFORME_HIST ou N")
+                    os.environ.get('SCRAPER_SKIP_INFORME_HIST', 'N'),
+                show_default="Variável de ambiente SCRAPER_SKIP_INFORME_HIST ou N")
 @click.option('--skip_salva_dados_cadastrais_remoto', 
                 default=lambda:
-                    os.environ.get('MORPH_SCRAPER_SKIP_DADOS_CAD_REMOTO', 'N'),
-                show_default="Variável de ambiente MORPH_SCRAPER_SKIP_DADOS_CAD_REMOTO ou N")
+                    os.environ.get('SCRAPER_SKIP_DADOS_CAD_REMOTO', 'N'),
+                show_default="Variável de ambiente SCRAPER_SKIP_DADOS_CAD_REMOTO ou N")
 @click.option('--periodo_inicial', 
                 default=lambda: 
-                    os.environ.get('MORPH_SCRAPER_INFORME_CVM_PERIODO_INICIAL', (datetime.today() - timedelta(days=32)).strftime('%Y%m')),
-                show_default="Parâmetro deve ser informado no formato \"AAAAMM\". Variável de ambiente MORPH_SCRAPER_INFORME_DIARIO_CVM_PERIODO_INICIAL ou o valor padrão (últimos dois meses)")
+                    os.environ.get('SCRAPER_INFORME_CVM_PERIODO_INICIAL', (datetime.today() - timedelta(days=32)).strftime('%Y%m')),
+                show_default="Parâmetro deve ser informado no formato \"AAAAMM\". Variável de ambiente SCRAPER_INFORME_DIARIO_CVM_PERIODO_INICIAL ou o valor padrão (últimos dois meses)")
 @click.option('--compara_antes_insercao', 
                 default=lambda: 
-                    os.environ.get('MORPH_SCRAPER_COMPARA_ANTES_INSERCAO', 'N'), 
-                show_default="Variável de ambiente MORPH_SCRAPER_COMPARA_ANTES ou valor padrão N")
+                    os.environ.get('SCRAPER_COMPARA_ANTES_INSERCAO', 'N'), 
+                show_default="Variável de ambiente SCRAPER_COMPARA_ANTES ou valor padrão N")
 @click.option('--limpa_acervo_antigo', 
                 default=lambda: 
-                    os.environ.get('MORPH_SCRAPER_LIMPA_ACERVO_ANTIGO', 'S'), 
-                show_default="Variável de ambiente MORPH_SCRAPER_LIMPA_ACERVO_ANTIGO ou valor padrão N")
+                    os.environ.get('SCRAPER_LIMPA_ACERVO_ANTIGO', 'S'), 
+                show_default="Variável de ambiente SCRAPER_LIMPA_ACERVO_ANTIGO ou valor padrão N")
 @click.option('--enable_remotedb', 
                 default=lambda: 
-                    os.environ.get('MORPH_SCRAPER_ENABLE_REMOTEDB', 'S'), 
-                show_default="Variável de ambiente MORPH_SCRAPER_ENABLE_REMOTEDB ou valor padrão N")
+                    os.environ.get('SCRAPER_ENABLE_REMOTEDB', 'S'), 
+                show_default="Variável de ambiente SCRAPER_ENABLE_REMOTEDB ou valor padrão N")
 @click.option('--sqlalchemy_dburi',
                 default=lambda: 
-                    os.environ.get('MORPH_SQLALCHEMY_DATABASE_URI'), 
-                help="DBURI para acesso ao banco de dados. Ex: mysql+pymysql://aaa:xxx@remotemysql.com:3306/aaa. Default Variável de ambiente MORPH_SQLALCHEMY_DATABASE_URI")
+                    os.environ.get('SQLALCHEMY_DATABASE_URI'), 
+                help="DBURI para acesso ao banco de dados. Ex: mysql+pymysql://aaa:xxx@remotemysql.com:3306/aaa. Default Variável de ambiente SQLALCHEMY_DATABASE_URI")
 def executa_scraper(skip_informe_diario_atual='N', skip_informacoes_cadastrais='N', skip_informe_diario_historico='N', skip_salva_dados_cadastrais_remoto='N', periodo_inicial='202012',
     compara_antes_insercao='N', limpa_acervo_antigo='S', enable_remotedb='S', sqlalchemy_dburi=None):
     print(f'Período inicial para buscar os informes diários {periodo_inicial}')
