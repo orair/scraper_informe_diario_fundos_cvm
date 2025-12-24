@@ -75,3 +75,16 @@ CREATE TABLE IF NOT EXISTS informe_diario (
         INDEX idx_informe_diario_06 (MES_REF),
         INDEX idx_informe_diario_07 (CNPJ_FUNDO, ANO_REF DESC, MES_REF)	
 );
+
+CREATE VIEW ultima_data as select max(d."DT_REF") as DT_REF from informe_diario d;
+
+CREATE VIEW IF NOT EXISTS ultima_quota as 
+        select c."COD_CNPJ", c."CNPJ_FUNDO", c."DENOM_SOCIAL", i."DT_REF", i."VL_QUOTA"
+        FROM dados_cadastrais c
+        inner join informe_diario i on (c."COD_CNPJ"=i."COD_CNPJ")
+        where not exists (
+            select 1 from informe_diario i2
+            where i2."COD_CNPJ"=i."COD_CNPJ"
+            and i2."DT_REF" > i."DT_REF"
+        );
+
