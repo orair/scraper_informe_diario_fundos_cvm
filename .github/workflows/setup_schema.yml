@@ -18,8 +18,9 @@ jobs:
 
       - name: Execute Schema Script
         run: |
-          dolt sql --database "cvm-informe-diario" --batch < create_schema_mysql.sql
+          dolt sql --batch < create_schema_mysql.sql        
         env:
+          DOLT_DATABASE: "cvm-informe-diario"
           DOLT_TOKEN: ${{ secrets.DOLT_TOKEN }}
 
       - name: Commit and Push Schema
