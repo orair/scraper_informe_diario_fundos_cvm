@@ -18,6 +18,7 @@ jobs:
 
       - name: Execute Schema Script
         run: |
+          dolt link "cvm-informe-diario"
           dolt sql --batch < create_schema_mysql.sql        
         env:
           DOLT_DATABASE: "cvm-informe-diario"
