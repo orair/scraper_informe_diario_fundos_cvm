@@ -21,7 +21,7 @@ jobs:
           REPO_NAME=$(basename $GITHUB_REPOSITORY)
           
           # Executa o script que contém os CREATE TABLE IF NOT EXISTS com índices internos
-          dolt sql --batch -b $REPO_NAME < create_schema_mysql.sql
+          dolt sql --batch $REPO_NAME < create_schema_mysql.sql
         env:
           DOLT_TOKEN: ${{ secrets.DOLT_TOKEN }}
 
