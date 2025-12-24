@@ -17,8 +17,8 @@ jobs:
           dolt config --global --add user.name "orair"
           dolt config --global --add user.email "gustavo.orair@gmail.com"
 
-          # AUTENTICAÇÃO: Cria o arquivo de credenciais usando o seu TOKEN
-          dolt login --creds-only ${{ secrets.DOLT_TOKEN }}
+          # Autenticação limpa: Injeta o token direto no comando de importação
+          echo "${{ secrets.DOLT_TOKEN }}" | dolt creds import
       - name: Execute Schema Script
         run: |
           dolt clone "orair/cvm-informe-diario"
