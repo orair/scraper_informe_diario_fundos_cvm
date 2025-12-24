@@ -1,60 +1,51 @@
-name: CVM to DoltHub (Python 3.12)
+name: 02 - Daily CVM Scraper
 
 on:
   schedule:
-    - cron: '0 13 * * *' # Roda diariamente às 10h (Horário de Brasília)
+    - cron: '0 13 * * *' # Roda todos os dias às 13:00 UTC (10:00 BRT)
   workflow_dispatch:
 
 jobs:
-  update-db:
+  scrape-and-sync:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Python 3.12
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-          cache: 'pip' # Otimiza execuções futuras
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: pip install pandas requests tqdm
 
       - name: Install Dolt CLI
         run: |
           sudo curl -L https://github.com/dolthub/dolt/releases/latest/download/install.sh | sudo bash
           dolt config --global --add user.name "CVM Scraper Bot"
-          dolt config --global --add user.email "bot@exemplo.com"
-
-      - name: Install Dependencies
-        run: pip install pandas requests tqdm
+          dolt config --global --add user.email "bot@cvm.com"
 
       - name: Run Scraper
         run: python scraper.py
 
-      - name: SQL Sync and Cleanup
+      - name: Import and Upsert Data
         run: |
-          # Importação para tabelas temporárias
+          # Importação para tabelas temporárias (evita lock nas tabelas oficiais)
           dolt table import -u informe_diario_temp informe_diario_temp.csv
           dolt table import -u dados_cadastrais_temp dados_cadastrais_temp.csv
           
-          # UPSERT: Insere novos e atualiza existentes (VL_QUOTA e VL_PATRIM_LIQ)
-          dolt sql -q "INSERT INTO informe_diario SELECT * FROM informe_diario_temp 
-                       ON DUPLICATE KEY UPDATE 
-                       VL_QUOTA=VALUES(VL_QUOTA), 
-                       VL_PATRIM_LIQ=VALUES(VL_PATRIM_LIQ),
-                       NR_COTST=VALUES(NR_COTST);"
-
+          # Movimentação dos dados com tratamento de duplicados
+          dolt sql -q "INSERT INTO informe_diario SELECT * FROM informe_diario_temp ON DUPLICATE KEY UPDATE VL_QUOTA=VALUES(VL_QUOTA), VL_PATRIM_LIQ=VALUES(VL_PATRIM_LIQ), NR_COTST=VALUES(NR_COTST);"
           dolt sql -q "REPLACE INTO dados_cadastrais SELECT * FROM dados_cadastrais_temp;"
+          
+          # Limpeza das tabelas temporárias
+          dolt table rm informe_diario_temp
+          dolt table rm dados_cadastrais_temp
 
-          # LIMPEZA: Mantém apenas a última cota de cada mês para dados históricos (>30 dias)
-          dolt sql -q "DELETE FROM informe_diario 
-                       WHERE DT_REF < DATE_SUB(NOW(), INTERVAL 30 DAY) 
-                       AND (COD_CNPJ, DT_REF) NOT IN (
-                           SELECT COD_CNPJ, MAX(DT_REF) FROM (SELECT * FROM informe_diario) as sub
-                           WHERE DT_REF < DATE_SUB(NOW(), INTERVAL 30 DAY)
-                           GROUP BY COD_CNPJ, DATE_FORMAT(DT_REF, '%Y%m')
-                       );"
-
-          # Persistência no DoltHub
+      - name: Commit and Push Data
+        run: |
           dolt add .
           dolt commit -m "CVM Update: $(date +'%Y-%m-%d')"
           dolt push origin main
