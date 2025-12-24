@@ -155,19 +155,19 @@ def executa_scraper_informe_diario_por_periodo(periodo, compara_antes_insercao, 
         print (f'Não foram encontrados novos registros no arquivo para o periodo {periodo}...')
 
 def carrega_informe_remoto(informe_diario_df, engine):
-    print('Inserindo informe diário no banco de dados remoto...')
+    print(f'Preparando inserção de {len(informe_diario_df)} registros no banco de dados remoto...')
+    
+    # O pangres exige que os índices do DF sejam as Chaves Primárias da tabela
     informe_diario_df.set_index(['COD_CNPJ', 'DT_REF'], inplace=True)
 
-    # it does not matter if if_row_exists is set
-    # to "update" or "ignore" for table creation
+    # O Upsert do pangres resolve o conflito de chaves automaticamente no Postgres
     upsert(engine=engine,
-        df=informe_diario_df,
-        table_name='informe_diario',
-        if_row_exists='update'
-        #,dtype=dtype
-    )
+           df=informe_diario_df,
+           table_name='informe_diario',
+           if_row_exists='update',
+           add_new_columns=False) # Não deixa o script bagunçar seu schema
     
-    print('Finalizada inserção de informe diário no banco de dados remoto...')
+    print('Finalizada inserção no informe_diario.')
 
 def carrega_informe_local(informe_diario_df, periodo, compara_antes_insercao):
     print('Inserindo informe diário no banco de dados local...')
@@ -492,22 +492,21 @@ def salva_dados_cadastrais(df, enable_remotedb, skip_salva_dados_cadastrais_remo
     else:
         print('Serão salvos os dados localmente...')
         salva_dados_cadastrais_local(df)
-    
+
 def salva_dados_cadastrais_remoto(df, engine):
     try:
         print('Salvando dados cadastrais no banco de dados remoto...')
         
-        #df=df[df['COD_CNPJ']=='97711801000105']
+        # Ajuste o índice para bater com a sua Primary Key do PG
         df.set_index(['TP_FUNDO', 'COD_CNPJ'], inplace=True)
 
-        # it does not matter if if_row_exists is set
-        # to "update" or "ignore" for table creation
         upsert(engine=engine,
-            df=df,
-            table_name='dados_cadastrais',
-            if_row_exists='update'
-            #,dtype=dtype
-        )
+               df=df,
+               table_name='dados_cadastrais',
+               if_row_exists='update',
+               add_new_columns=False)
+        print('Dados cadastrais atualizados com sucesso.')
+		
     except IndexError as err:
         print(f'Falha de índice ao salvar registros dos dados cadastrais no banco de dados remoto...', err)
         print ('Índice', df.index.names)
