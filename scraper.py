@@ -2,15 +2,12 @@
 # -*- coding: utf-8 -*-
 import os
 from pathlib import Path
-# morph.io requires this db filename, but scraperwiki doesn't nicely
-# expose a way to alter this. So we'll fiddle our environment ourselves
-# before our pipeline modules load.
-os.environ['SCRAPERWIKI_DATABASE_NAME'] = 'sqlite:///data.sqlite'
+
 import datetime
 from datetime import datetime, timedelta
 from dateutil.relativedelta import *
 import click
-import scraperwiki
+
 import pandas as pd
 from six.moves import urllib
 import shutil
@@ -214,18 +211,32 @@ def carrega_informe_local(informe_diario_df, periodo, compara_antes_insercao):
             #del(merge_df)
             
             print (f'Foram encontrados {len(informe_diario_df.index)} registros no arquivo, sendo {len(novos_dados_df.index)} novos registros...')
-            # Como o scraperwiki fornece apenas o save que faz um autocommit 
-            # por registro, só vamos salvar no banco os registros que 
+            # só vamos salvar no banco os registros que 
             # já identificarmos que são realmente novos dados 
             salva_informe_periodo(novos_dados_df)
     else:
         print ('Não encontrou novos dados a serem atualizados localmente')
 
-def recupera_informe_diario(periodo):
-    query=f"COD_CNPJ, DT_REF, CNPJ_FUNDO, DT_COMPTC, VL_TOTAL, VL_QUOTA, VL_PATRIM_LIQ, CAPTC_DIA, RESG_DIA, NR_COTST from informe_diario where strftime('%Y%m', DT_REF) = '{periodo}' order by COD_CNPJ, DT_REF"
-    result=scraperwiki.sql.select(query)
-    df=pd.DataFrame(result)
-    return df
+def recupera_informe_diario(periodo, engine):
+    # No PostgreSQL, usamos TO_CHAR para formatar a data como 'YYYYMM'
+    # E as colunas precisam de aspas duplas por causa do seu Schema
+    query = f"""
+        SELECT 
+            "COD_CNPJ", "DT_REF", "CNPJ_FUNDO", "DT_COMPTC", 
+            "VL_TOTAL", "VL_QUOTA", "VL_PATRIM_LIQ", 
+            "CAPTC_DIA", "RESG_DIA", "NR_COTST" 
+        FROM informe_diario 
+        WHERE TO_CHAR("DT_REF", 'YYYYMM') = '{periodo}' 
+        ORDER BY "COD_CNPJ", "DT_REF"
+    """
+    
+    # Usamos o pandas direto com a engine do SQLAlchemy
+    try:
+        df = pd.read_sql(query, con=engine)
+        return df
+    except Exception as e:
+        print(f"Erro ao recuperar dados do período {periodo}: {e}")
+        return pd.DataFrame()
 
 def importa_dados_remotos(engine):
     print ('Iniciando importação dos dados remotos na base local')
@@ -358,8 +369,6 @@ def salva_informe_periodo_scraper_wiki(informe_diario_df):
         return False
     
     try:
-        print("Excluindo índices para inserção mais eficiente...")
-        drop_indexes_informe_diario()
         print(f'Iniciando inserção no banco de dados de {len(informe_diario_df.index)} registros.')
         
         records_list=informe_diario_df.to_dict('records')
@@ -372,9 +381,8 @@ def salva_informe_periodo_scraper_wiki(informe_diario_df):
         #for row in tqdm.tqdm(records_list):
             #print('linha a ser inserida no banco', row)
             #scraperwiki.sqlite.save(unique_keys=['COD_CNPJ', 'DT_REF'], data=row, table_name='informe_diario')
-        print('Recriando os índices da tabela informe diário...')
-        create_indexes_informe_diario()
-        print('Carga no banco de dados finalizada...')
+
+		print('Carga no banco de dados finalizada...')
     except Exception as err:
         print(f'Falha ao salvar registros no banco de dados.', err)
         print(type(err))    # the exception instance
@@ -519,7 +527,7 @@ def salva_dados_cadastrais_remoto(df, engine):
         print(err.args)     # arguments stored in .args
         return None   
 
-def salva_dados_cadastrais_local_scraperwiki(df):
+def salva_dados_cadastrais_local(df):
     try:
         print('Salvando dados cadastrais no banco de dados local...')
         records_list=df.to_dict('records')
@@ -536,236 +544,6 @@ def salva_dados_cadastrais_local_scraperwiki(df):
         print(type(err))    # the exception instance
         print(err.args)     # arguments stored in .args
         return None
-
-def salva_dados_cadastrais_local(df):
-    # O DoltHub prefere sobrescrever o cadastro completo (que é menor)
-    df.to_csv('dados_cadastrais.csv', index=False)
-    print("Cadastro exportado para dados_cadastrais.csv")
-
-def init():
-    init_database()
-
-def init_database():
-    create_tables()
-    #drop_indexes()
-    create_indexes()
-    create_views()
-    
-def create_tables():
-    """ Será necessário criar a tabela inicialmente pois o SQlite infere os tipos errados
-       o que faz falhar a carga
-    """
-    sql_create_table_dados_cadastrais='''CREATE TABLE IF NOT EXISTS dados_cadastrais (
-        TP_FUNDO TEXT,
-        "COD_CNPJ" TEXT NOT NULL PRIMARY KEY,
-        "CNPJ_FUNDO" TEXT NOT NULL, 	
-        "DENOM_SOCIAL" TEXT, 	
-        "DT_REG" TEXT, 	
-        "DT_CONST" TEXT, 
-        "CD_CVM" TEXT,	
-        "DT_CANCEL" TEXT, 	
-        "SIT" TEXT, 	
-        "DT_INI_SIT" TEXT, 	
-        "DT_INI_ATIV" TEXT, 	
-        "DT_INI_EXERC" TEXT, 	
-        "DT_FIM_EXERC" TEXT, 	
-        "CLASSE" TEXT, 	
-        "DT_INI_CLASSE" TEXT, 	
-        "RENTAB_FUNDO" TEXT, 	
-        "CONDOM" TEXT, 	
-        "FUNDO_COTAS" TEXT, 	
-        "FUNDO_EXCLUSIVO" TEXT, 	
-        "TRIB_LPRAZO" TEXT, 	
-        "INVEST_QUALIF" TEXT,
-        "ENTID_INVEST" TEXT, 	
-        "TAXA_PERFM" TEXT, 	
-        "INF_TAXA_PERFM" TEXT, 	
-        "TAXA_ADM" TEXT, 	
-        "INF_TAXA_ADM" TEXT, 	
-        "VL_PATRIM_LIQ" TEXT, 	
-        "DT_PATRIM_LIQ" TEXT, 	
-        "DIRETOR" TEXT, 	
-        "CNPJ_ADMIN" TEXT, 	
-        "ADMIN" TEXT, 	
-        "PF_PJ_GESTOR" TEXT, 	
-        "CPF_CNPJ_GESTOR" TEXT, 	
-        "GESTOR" TEXT, 	
-        "CNPJ_AUDITOR" TEXT, 	
-        "AUDITOR" TEXT, 	
-        "CNPJ_CUSTODIANTE" TEXT, 	
-        "CUSTODIANTE" TEXT, 	
-        "CNPJ_CONTROLADOR" TEXT, 	
-        "CONTROLADOR" TEXT
-        );    
-    '''
-    #scraperwiki.sqlite.execute('DROP TABLE dados_cadastrais;')
-
-    scraperwiki.sqlite.execute(sql_create_table_dados_cadastrais)
-
-    sql_create_table='''CREATE TABLE IF NOT EXISTS informe_diario (
-        "COD_CNPJ" TEXT NOT NULL, 	
-        "CNPJ_FUNDO" TEXT NOT NULL, 	
-        "DT_REF" DATE NOT NULL, 	
-        "DT_COMPTC" TEXT NOT NULL, 	
-        "VL_TOTAL" NUMERIC, 	
-        "VL_QUOTA" NUMERIC, 	
-        "VL_PATRIM_LIQ" NUMERIC, 	
-        "CAPTC_DIA" NUMERIC, 	
-        "RESG_DIA" NUMERIC, 	
-        "NR_COTST" INTEGER, 	
-        PRIMARY KEY(COD_CNPJ, DT_REF)
-    );    
-    '''
-    scraperwiki.sqlite.execute(sql_create_table)
-
-def drop_indexes_dados_cadastrais():
-    scraperwiki.sqlite.execute('DROP INDEX IF EXISTS idx_dados_cadastrais_01;')
-    scraperwiki.sqlite.execute('DROP INDEX IF EXISTS idx_dados_cadastrais_02;')
-    scraperwiki.sqlite.execute('DROP INDEX IF EXISTS idx_dados_cadastrais_03;')
-    scraperwiki.sqlite.execute('DROP INDEX IF EXISTS idx_dados_cadastrais_04;')
-    scraperwiki.sqlite.execute('DROP INDEX IF EXISTS idx_dados_cadastrais_05;')
-    scraperwiki.sqlite.execute('DROP INDEX IF EXISTS idx_dados_cadastrais_06;')
-    scraperwiki.sqlite.execute('DROP INDEX IF EXISTS idx_dados_cadastrais_07;')
-    scraperwiki.sqlite.execute('DROP INDEX IF EXISTS idx_dados_cadastrais_08;')
- 
-def drop_indexes_informe_diario():
-    scraperwiki.sqlite.execute('DROP INDEX IF EXISTS idx_informe_diario_01;')
-    scraperwiki.sqlite.execute('DROP INDEX IF EXISTS idx_informe_diario_02;')
-    scraperwiki.sqlite.execute('DROP INDEX IF EXISTS idx_informe_diario_03;')
-    scraperwiki.sqlite.execute('DROP INDEX IF EXISTS idx_informe_diario_04;')
-    scraperwiki.sqlite.execute('DROP INDEX IF EXISTS idx_informe_diario_05;')
-    scraperwiki.sqlite.execute('DROP INDEX IF EXISTS idx_informe_diario_06;')
-    scraperwiki.sqlite.execute('DROP INDEX IF EXISTS idx_informe_diario_07;')
-    scraperwiki.sqlite.execute('DROP INDEX IF EXISTS idx_informe_diario_08;')
-    
-def create_indexes():
-    create_indexes_dados_cadastrais()
-    create_indexes_informe_diario()
-    
-def create_indexes_dados_cadastrais():
-    print('Criando índices na tabela dados cadastrais...')
-    sql_create_idx='''CREATE UNIQUE INDEX IF NOT EXISTS idx_dados_cadastrais_02
-        ON dados_cadastrais (COD_CNPJ);
-    '''
-    scraperwiki.sqlite.execute(sql_create_idx)
-
-    sql_create_idx='''CREATE UNIQUE INDEX IF NOT EXISTS idx_dados_cadastrais_01
-        ON dados_cadastrais (CNPJ_FUNDO);
-    '''
-    scraperwiki.sqlite.execute(sql_create_idx)
-
-    sql_create_idx='''CREATE INDEX IF NOT EXISTS idx_dados_cadastrais_03
-        ON dados_cadastrais (DENOM_SOCIAL);
-    '''
-    scraperwiki.sqlite.execute(sql_create_idx)
-    
-    sql_create_idx='''CREATE INDEX IF NOT EXISTS idx_dados_cadastrais_04
-        ON dados_cadastrais (SIT);
-    '''
-    scraperwiki.sqlite.execute(sql_create_idx)
- 
-    sql_create_idx='''CREATE INDEX IF NOT EXISTS idx_dados_cadastrais_05
-        ON dados_cadastrais (CLASSE);
-    '''
-    scraperwiki.sqlite.execute(sql_create_idx)
- 
-    sql_create_idx='''CREATE INDEX IF NOT EXISTS idx_dados_cadastrais_06
-        ON dados_cadastrais (CNPJ_ADMIN);
-    '''
-    scraperwiki.sqlite.execute(sql_create_idx)
- 
-    sql_create_idx='''CREATE INDEX IF NOT EXISTS idx_dados_cadastrais_07
-        ON dados_cadastrais (CPF_CNPJ_GESTOR);
-    '''
-    scraperwiki.sqlite.execute(sql_create_idx)
-
-    sql_create_idx='''CREATE INDEX IF NOT EXISTS idx_dados_cadastrais_08
-        ON dados_cadastrais (CNPJ_CONTROLADOR);
-    '''
-    scraperwiki.sqlite.execute(sql_create_idx)
-
-def create_indexes_informe_diario():
-    print('Criando índices na tabela informe diário...')
-    sql_create_idx='''CREATE INDEX IF NOT EXISTS idx_informe_diario_01
-        ON informe_diario (COD_CNPJ);
-    '''
-    scraperwiki.sqlite.execute(sql_create_idx)
-
-    sql_create_idx='''CREATE INDEX IF NOT EXISTS idx_informe_diario_02
-        ON informe_diario (CNPJ_FUNDO);
-    '''
-    scraperwiki.sqlite.execute(sql_create_idx)
-   
-    sql_create_idx='''CREATE INDEX IF NOT EXISTS idx_informe_diario_03
-        ON informe_diario (DT_REF);
-    '''
-    scraperwiki.sqlite.execute(sql_create_idx)
-    sql_create_idx='''CREATE INDEX IF NOT EXISTS idx_informe_diario_04
-        ON informe_diario (DT_COMPTC);
-    '''
-    scraperwiki.sqlite.execute(sql_create_idx)
-    sql_create_idx='''CREATE UNIQUE INDEX IF NOT EXISTS idx_informe_diario_05
-        ON informe_diario (COD_CNPJ, DT_REF);
-    '''
-    scraperwiki.sqlite.execute(sql_create_idx)
-
-    sql_create_idx='''CREATE UNIQUE INDEX IF NOT EXISTS idx_informe_diario_06
-        ON informe_diario (CNPJ_FUNDO, DT_REF);
-    '''
-    scraperwiki.sqlite.execute(sql_create_idx)
-
-    #lista_indices=scraperwiki.sqlite.execute('PRAGMA index_list(''informe_diario'');')
-    #print(lista_indices)
-    #for idx in lista_indices:
-    #    idx_name=idx
-    #    print(idx_name)
-    #    columns=scraperwiki.sqlite.execute('PRAGMA index_info('+idx_name+');')
-    #    print('columns: ', columns)
-
-
-def create_views():
-    # Evitamos usar a sintaxe que especifica as colunas da view porque
-    # este só foi adicionada à versão do SQLite 3.9.0 (2015-10-14)
-
-    sql_drop_view='''DROP VIEW IF EXISTS ultima_data;'''
-    sql_create_view='''CREATE VIEW IF NOT EXISTS ultima_data as select max(d.DT_REF) as DT_REF from informe_diario d;'''
-    #sql_create_view='''CREATE VIEW IF NOT EXISTS ultima_data(DT_REF) as select max(d.DT_REF) as DT_REF from informe_diario d;'''
-    try:
-        print('Criação da view de ultima_data')
-        scraperwiki.sqlite.execute(sql_drop_view)        
-        scraperwiki.sqlite.execute(sql_create_view)        
-    except (sqlite3.OperationalError, sqlalchemy.exc.OperationalError) as err:        
-        print('Falha na criação da view...', err)
-        print(type(err))    # the exception instance
-        print(err.args)     # arguments stored in .args
-    
-    sql_drop_view='''DROP VIEW IF EXISTS ultima_quota;'''
-    sql_create_view='''CREATE VIEW IF NOT EXISTS ultima_quota as 
-        select c.COD_CNPJ, c.CNPJ_FUNDO, c.DENOM_SOCIAL, i.DT_REF, i.VL_QUOTA
-        FROM dados_cadastrais c
-        inner join informe_diario i on (c.COD_CNPJ=i.COD_CNPJ)
-        where not exists (
-            select 1 from informe_diario i2
-            where i2.COD_CNPJ=i.COD_CNPJ
-            and i2.DT_REF > i.DT_REF
-        );
-    '''
-#    sql_create_view='''
-#        CREATE VIEW IF NOT EXISTS ultima_quota(
-#            COD_CNPJ, CNPJ_FUNDO, DENOM_SOCIAL, 
-#            DT_REF, VL_QUOTA) AS select COD_CNPJ, CNPJ_FUNDO, DENOM_SOCIAL, i.DT_REF, i.VL_QUOTA
-#        FROM dados_cadastrais c
-#        inner join informe_diario d on (d.COD_CNPJ=c.COD_CNPJ)
-#        where d.DT_REF IN (select DT_REF from ultima_data u);
-#    '''
-    try:
-        print('Criação da view de ultima_quota')
-        scraperwiki.sqlite.execute(sql_drop_view)        
-        scraperwiki.sqlite.execute(sql_create_view)        
-    except (sqlite3.OperationalError, sqlalchemy.exc.OperationalError) as err:        
-        print('Falha na criação da view...', err)
-        print(type(err))    # the exception instance
-        print(err.args)     # arguments stored in .args
 
 def captura_arquivo_composicao_carteira(periodo):
     periodo=202005
@@ -891,23 +669,6 @@ def executa_limpeza_acervo_antigo_remoto(engine):
 	)
         ''' 
 
-    #sql_pg_delete=f'''with ultima_quota AS
-    #    (
-    #		select i3."COD_CNPJ", max(i3."DT_REF") as "DT_REF", i3."ANO_REF", i3."MES_REF"
-    #		from informe_diario i3
-    #		group by "COD_CNPJ", "ANO_REF", "MES_REF"
-    #    )
-    #    delete from informe_diario i
-    #	where exists (select 1 from ultima_quota i2
-    #	    where
-    #	    i."COD_CNPJ"=i2."COD_CNPJ"
-    #	    and i."ANO_REF"=i2."ANO_REF"
-    #	    and i."MES_REF"=i2."MES_REF"
-    #	    and i."DT_REF" < i2."DT_REF"
-    #	)
-    #	and i."DT_REF" < '{last_month}'
-    #        ''' 
-
     try:
         print('Apagando acervo antigo da base remota...')
         #print(sql_delete)
@@ -933,7 +694,7 @@ def executa_limpeza_acervo_antigo_local():
             and informe_diario.DT_REF < d2.DT_REF
             and strftime('%Y%m', informe_diario.DT_REF) = strftime('%Y%m', d2.DT_REF)
         )'''
-       #d. 
+
     try:
         print('Apagando acervo antigo da base local...')
         #print(sql_delete)
@@ -945,16 +706,5 @@ def executa_limpeza_acervo_antigo_local():
         print(err.args)     # arguments stored in .args
 
 if __name__ == '__main__':
-    #    captura_arquivo_composicao_carteira('')
-    #    exit()
-
     print (f'variável de ambiente {os.environ.get("SCRAPERWIKI_DATABASE_NAME")}')
     executa_scraper()
-
-    # O scraperwiki do Morph.IO não é compatível com o Python3
-    # Também é difícil ficar configurando a variável de ambiente neste contexto
-    # Por esta razão, deixamos escrever no local padrão do scraperwiki
-    # E posteriormente copiamos o database para o diretório esperado pelo Morph.io
-    if os.path.exists('scraperwiki.sqlite'):
-        print('Renomeando arquivo sqlite')
-        shutil.copy('scraperwiki.sqlite', 'data.sqlite')
