@@ -352,7 +352,7 @@ def obtem_periodos(periodo_inicial='201912'):
 
     return periodos
 
-def salva_informe_periodo(informe_diario_df):
+def salva_informe_periodo_scraper_wiki(informe_diario_df):
     if informe_diario_df is None or informe_diario_df.empty:
         print('Recebeu dados vazios!')
         return False
@@ -380,6 +380,15 @@ def salva_informe_periodo(informe_diario_df):
         print(type(err))    # the exception instance
         print(err.args)     # arguments stored in .args
         return None
+
+def salva_informe_periodo(informe_diario_df):
+    if informe_diario_df is None or informe_diario_df.empty:
+        return False
+    # Salvamos um CSV que o Dolt vai ler
+    # O modo 'a' (append) com header apenas se o arquivo não existir
+    file_exists = os.path.isfile('dados_informe.csv')
+    informe_diario_df.to_csv('dados_informe.csv', mode='a', index=False, header=not file_exists)
+    print(f"Dados exportados para dados_informe.csv")
 
 def executa_scraper_dados_cadastrais(enable_remotedb, skip_salva_dados_cadastrais_remoto, engine):
     #from bizdays import Calendar
@@ -511,7 +520,7 @@ def salva_dados_cadastrais_remoto(df, engine):
         print(err.args)     # arguments stored in .args
         return None   
 
-def salva_dados_cadastrais_local(df):
+def salva_dados_cadastrais_local_scraperwiki(df):
     try:
         print('Salvando dados cadastrais no banco de dados local...')
         records_list=df.to_dict('records')
@@ -528,6 +537,11 @@ def salva_dados_cadastrais_local(df):
         print(type(err))    # the exception instance
         print(err.args)     # arguments stored in .args
         return None
+
+def salva_dados_cadastrais_local(df):
+    # O DoltHub prefere sobrescrever o cadastro completo (que é menor)
+    df.to_csv('dados_cadastrais.csv', index=False)
+    print("Cadastro exportado para dados_cadastrais.csv")
 
 def init():
     init_database()
