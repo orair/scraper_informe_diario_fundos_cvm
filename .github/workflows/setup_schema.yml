@@ -1,0 +1,32 @@
+name: 01 - Setup Database Schema
+
+on:
+  workflow_dispatch: # Permite rodar manualmente pelo botão "Run workflow" no GitHub
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Dolt CLI
+        run: |
+          sudo curl -L https://github.com/dolthub/dolt/releases/latest/download/install.sh | sudo bash
+          dolt config --global --add user.name "Setup Bot"
+          dolt config --global --add user.email "setup@bot.com"
+
+      - name: Execute Schema Script
+        run: |
+          # Executa o script que contém os CREATE TABLE IF NOT EXISTS com índices internos
+          dolt sql < create_schema_mysql.sql
+        env:
+          DOLT_TOKEN: ${{ secrets.DOLT_TOKEN }}
+
+      - name: Commit and Push Schema
+        run: |
+          dolt add .
+          dolt commit -m "Configuração inicial de tabelas e índices" || echo "Nenhuma alteração no esquema."
+          dolt push origin main
+        env:
+          DOLT_TOKEN: ${{ secrets.DOLT_TOKEN }}
