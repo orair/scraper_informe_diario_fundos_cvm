@@ -12,3 +12,4 @@ pangres
 bizdays
 tqdm
 psycopg2
+dolthy
