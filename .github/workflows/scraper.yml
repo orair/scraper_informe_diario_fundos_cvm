@@ -1,0 +1,43 @@
+name: CVM Scraper to DoltHub
+
+on:
+  schedule:
+    - cron: '0 13 * * *' # Todo dia às 10h da manhã (Brasília)
+  workflow_dispatch:
+
+jobs:
+  run-scraper:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install Dolt
+        run: |
+          sudo curl -L https://github.com/dolthub/dolt/releases/latest/download/install.sh | sudo bash
+          dolt config --global --add user.name "Gustavo Orair"
+          dolt config --global --add user.email "gustavo.orair@gmail.com"
+
+      - name: Install Python Dependencies
+        run: pip install pandas requests tqdm click python-dateutil bizdays pangres sqlalchemy
+
+      - name: Run Scraper
+        run: python scraper.py
+        env:
+          MORPH_SCRAPER_SKIP_INFORME_HIST: 'S' # Evita reprocessar tudo todo dia
+
+      - name: Push to DoltHub
+        run: |
+          # Aqui o Dolt lê o CSV gerado e envia pro seu banco
+          dolt table import -u informe_diario dados_informe.csv
+          dolt table import -u dados_cadastrais dados_cadastrais.csv
+          dolt add .
+          dolt commit -m "Update CVM data $(date)"
+          dolt push origin main
+        env:
+          DOLT_TOKEN: ${{ secrets.DOLT_TOKEN }}
