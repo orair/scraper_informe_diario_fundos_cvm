@@ -13,9 +13,12 @@ jobs:
       - name: Install Dolt CLI
         run: |
           sudo curl -L https://github.com/dolthub/dolt/releases/latest/download/install.sh | sudo bash
-          dolt config --global --add user.name "Setup Bot"
-          dolt config --global --add user.email "setup@bot.com"
 
+          dolt config --global --add user.name "orair"
+          dolt config --global --add user.email "gustavo.orair@gmail.com"
+
+          # AUTENTICAÇÃO: Cria o arquivo de credenciais usando o seu TOKEN
+          dolt login --creds-only ${{ secrets.DOLT_TOKEN }}
       - name: Execute Schema Script
         run: |
           dolt clone "orair/cvm-informe-diario"
@@ -24,10 +27,6 @@ jobs:
           cd cvm-informe-diario
           dolt sql --batch < ../create_schema_mysql.sql
           
-          # 4. Faz o commit e push das alterações estruturais
-          dolt add .
-          dolt commit -m "Update schema"
-          dolt push origin main
         env:
           DOLT_DATABASE: "cvm-informe-diario"
           DOLT_TOKEN: ${{ secrets.DOLT_TOKEN }}
