@@ -1,43 +1,62 @@
-name: CVM Scraper to DoltHub
+name: CVM to DoltHub (Python 3.12)
 
 on:
   schedule:
-    - cron: '0 13 * * *' # Todo dia às 10h da manhã (Brasília)
+    - cron: '0 13 * * *' # Roda diariamente às 10h (Horário de Brasília)
   workflow_dispatch:
 
 jobs:
-  run-scraper:
+  update-db:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v4
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: '3.12'
+          cache: 'pip' # Otimiza execuções futuras
 
-      - name: Install Dolt
+      - name: Install Dolt CLI
         run: |
           sudo curl -L https://github.com/dolthub/dolt/releases/latest/download/install.sh | sudo bash
-          dolt config --global --add user.name "Gustavo Orair"
-          dolt config --global --add user.email "gustavo.orair@gmail.com"
+          dolt config --global --add user.name "CVM Scraper Bot"
+          dolt config --global --add user.email "bot@exemplo.com"
 
-      - name: Install Python Dependencies
-        run: pip install pandas requests tqdm click python-dateutil bizdays pangres sqlalchemy
+      - name: Install Dependencies
+        run: pip install pandas requests tqdm
 
       - name: Run Scraper
         run: python scraper.py
-        env:
-          MORPH_SCRAPER_SKIP_INFORME_HIST: 'S' # Evita reprocessar tudo todo dia
 
-      - name: Push to DoltHub
+      - name: SQL Sync and Cleanup
         run: |
-          # Aqui o Dolt lê o CSV gerado e envia pro seu banco
-          dolt table import -u informe_diario dados_informe.csv
-          dolt table import -u dados_cadastrais dados_cadastrais.csv
+          # Importação para tabelas temporárias
+          dolt table import -u informe_diario_temp informe_diario_temp.csv
+          dolt table import -u dados_cadastrais_temp dados_cadastrais_temp.csv
+          
+          # UPSERT: Insere novos e atualiza existentes (VL_QUOTA e VL_PATRIM_LIQ)
+          dolt sql -q "INSERT INTO informe_diario SELECT * FROM informe_diario_temp 
+                       ON DUPLICATE KEY UPDATE 
+                       VL_QUOTA=VALUES(VL_QUOTA), 
+                       VL_PATRIM_LIQ=VALUES(VL_PATRIM_LIQ),
+                       NR_COTST=VALUES(NR_COTST);"
+
+          dolt sql -q "REPLACE INTO dados_cadastrais SELECT * FROM dados_cadastrais_temp;"
+
+          # LIMPEZA: Mantém apenas a última cota de cada mês para dados históricos (>30 dias)
+          dolt sql -q "DELETE FROM informe_diario 
+                       WHERE DT_REF < DATE_SUB(NOW(), INTERVAL 30 DAY) 
+                       AND (COD_CNPJ, DT_REF) NOT IN (
+                           SELECT COD_CNPJ, MAX(DT_REF) FROM (SELECT * FROM informe_diario) as sub
+                           WHERE DT_REF < DATE_SUB(NOW(), INTERVAL 30 DAY)
+                           GROUP BY COD_CNPJ, DATE_FORMAT(DT_REF, '%Y%m')
+                       );"
+
+          # Persistência no DoltHub
           dolt add .
-          dolt commit -m "Update CVM data $(date)"
+          dolt commit -m "CVM Update: $(date +'%Y-%m-%d')"
           dolt push origin main
         env:
           DOLT_TOKEN: ${{ secrets.DOLT_TOKEN }}
