@@ -1,4 +1,3 @@
-
 # -*- coding: utf-8 -*-
 import os
 from pathlib import Path
@@ -34,10 +33,10 @@ import sqlalchemy
                 default=lambda:
                     os.environ.get('SCRAPER_SKIP_INFORME_HIST', 'N'),
                 show_default="Variável de ambiente SCRAPER_SKIP_INFORME_HIST ou N")
-@click.option('--skip_salva_dados_cadastrais_remoto', 
+@click.option('--skip_salva_dados_cadastrais', 
                 default=lambda:
-                    os.environ.get('SCRAPER_SKIP_DADOS_CAD_REMOTO', 'N'),
-                show_default="Variável de ambiente SCRAPER_SKIP_DADOS_CAD_REMOTO ou N")
+                    os.environ.get('SCRAPER_SKIP_DADOS_CADASTRAIS', 'N'),
+                show_default="Variável de ambiente SCRAPER_SKIP_DADOS_CADASTRAIS ou N")
 @click.option('--periodo_inicial', 
                 default=lambda: 
                     os.environ.get('SCRAPER_INFORME_CVM_PERIODO_INICIAL', (datetime.today() - timedelta(days=32)).strftime('%Y%m')),
@@ -50,19 +49,14 @@ import sqlalchemy
                 default=lambda: 
                     os.environ.get('SCRAPER_LIMPA_ACERVO_ANTIGO', 'S'), 
                 show_default="Variável de ambiente SCRAPER_LIMPA_ACERVO_ANTIGO ou valor padrão N")
-@click.option('--enable_remotedb', 
-                default=lambda: 
-                    os.environ.get('SCRAPER_ENABLE_REMOTEDB', 'S'), 
-                show_default="Variável de ambiente SCRAPER_ENABLE_REMOTEDB ou valor padrão N")
 @click.option('--sqlalchemy_dburi',
                 default=lambda: 
                     os.environ.get('SQLALCHEMY_DATABASE_URI'), 
-                help="DBURI para acesso ao banco de dados. Ex: mysql+pymysql://aaa:xxx@remotemysql.com:3306/aaa. Default Variável de ambiente SQLALCHEMY_DATABASE_URI")
+                help="DBURI para acesso ao banco de dados. Ex: postgresql+psycopg2://<USUARIO>:<SENHA>@<HOST>:<PORTA>/<DATABASE>. Default Variável de ambiente SQLALCHEMY_DATABASE_URI")
 def executa_scraper(skip_informe_diario_atual='N', skip_informacoes_cadastrais='N', skip_informe_diario_historico='N', skip_salva_dados_cadastrais_remoto='N', periodo_inicial='202012',
-    compara_antes_insercao='N', limpa_acervo_antigo='S', enable_remotedb='S', sqlalchemy_dburi=None):
+    compara_antes_insercao='N', limpa_acervo_antigo='S', sqlalchemy_dburi=None):
     print(f'Período inicial para buscar os informes diários {periodo_inicial}')
     init()
-    #print ('enable_remote_db', enable_remotedb)
 
     if (skip_informe_diario_atual == 'N'):
         skip_informe_diario_atual = False
@@ -76,9 +70,9 @@ def executa_scraper(skip_informe_diario_atual='N', skip_informacoes_cadastrais='
         skip_informe_diario_historico=False
     else: skip_informe_diario_historico=True
 
-    if (skip_salva_dados_cadastrais_remoto == 'N'):  
-        skip_salva_dados_cadastrais_remoto=False
-    else: skip_salva_dados_cadastrais_remoto=True
+    if (skip_salva_dados_cadastrais == 'N'):  
+        skip_salva_dados_cadastraiso=False
+    else: skip_salva_dados_cadastrais=True
  
     if (compara_antes_insercao == 'N'):
         compara_antes_insercao=False
@@ -88,46 +82,38 @@ def executa_scraper(skip_informe_diario_atual='N', skip_informacoes_cadastrais='
         limpa_acervo_antigo = False
     else: limpa_acervo_antigo = True
 
-    if (enable_remotedb == 'S'):
-        enable_remotedb = True
-    else: enable_remotedb = False
-    #print ('enable_remote_db', enable_remotedb)
-
     engine=None
-    if (enable_remotedb):
-        #Init engine
-        if (sqlalchemy_dburi):
-            #print ('Iniciando engine para a base de dados', sqlalchemy_dburi)
-            print ('Iniciando engine para a base de dados')
-            #engine = sqlalchemy.create_engine(sqlalchemy_dburi, echo=True)
-            engine = sqlalchemy.create_engine(sqlalchemy_dburi)
-        else:
-            print('Desabilitando enable_remotedb pois não foi encontrado a URI para acesso ao banco.')
-            enable_remotedb=False
-    #else: print('Carga em banco de dados está desabilitada')
-    
+
+    #Init engine
+    if (sqlalchemy_dburi):
+        print ('Iniciando engine para a base de dados')
+
+        engine = sqlalchemy.create_engine(sqlalchemy_dburi)
+    else:
+        print('Não foi encontrado a URI para acesso ao banco.')
+        exit(1)
+
     if (limpa_acervo_antigo):
-        executa_limpeza_acervo_antigo(enable_remotedb, engine)
+        executa_limpeza_acervo_antigo(engine)
    
     if (not skip_informe_diario_atual):
-        executa_scraper_informe_diario_por_periodo(obtem_ultimo_periodo(), compara_antes_insercao, enable_remotedb, engine, False)
+        executa_scraper_informe_diario_por_periodo(obtem_ultimo_periodo(), compara_antes_insercao, engine, False)
 
     if (not skip_informacoes_cadastrais):
-        executa_scraper_dados_cadastrais(enable_remotedb, skip_salva_dados_cadastrais_remoto, engine)
+        executa_scraper_dados_cadastrais(skip_salva_dados_cadastrais, engine)
 
     print(f'Período inicial para buscar os informes diários {periodo_inicial}')
     if (not skip_informe_diario_historico):
-        executa_scraper_informe_diario_historico(periodo_inicial, compara_antes_insercao, enable_remotedb, engine)
+        executa_scraper_informe_diario_historico(periodo_inicial, compara_antes_insercao, engine)
 
-    if (enable_remotedb):
-        importa_dados_remotos(engine)
+    importa_dados_remotos(engine)
 
-def executa_scraper_informe_diario_historico(periodo_inicial, compara_antes_insercao, enable_remotedb, engine):
+def executa_scraper_informe_diario_historico(periodo_inicial, compara_antes_insercao, engine):
     periodos = obtem_periodos(periodo_inicial)
     for periodo in periodos: 
-        executa_scraper_informe_diario_por_periodo(periodo, compara_antes_insercao, enable_remotedb, engine, True)
+        executa_scraper_informe_diario_por_periodo(periodo, compara_antes_insercao, engine, True)
 
-def executa_scraper_informe_diario_por_periodo(periodo, compara_antes_insercao, enable_remotedb, engine, limpa_dados_diarios=True):
+def executa_scraper_informe_diario_por_periodo(periodo, compara_antes_insercao, engine, limpa_dados_diarios=True):
     df2 = None
     result, informe_diario_df = captura_arquivo_informe(periodo)
    
@@ -145,14 +131,13 @@ def executa_scraper_informe_diario_por_periodo(periodo, compara_antes_insercao, 
             informe_diario_df=ultimo_informe_df
             print(f'Número de registros após ignorar os dados diários desnecessário {len(informe_diario_df.index)}...')
             #print(informe_diario_df)
-        if (enable_remotedb):
-            carrega_informe_remoto(informe_diario_df, engine)
-        else: carrega_informe_local(informe_diario_df, periodo, compara_antes_insercao)
+        carrega_informe(informe_diario_df, engine)
+
     else:
         print (f'Não foram encontrados novos registros no arquivo para o periodo {periodo}...')
 
-def carrega_informe_remoto(informe_diario_df, engine):
-    print(f'Preparando inserção de {len(informe_diario_df)} registros no banco de dados remoto...')
+def carrega_informe(informe_diario_df, engine):
+    print(f'Preparando inserção de {len(informe_diario_df)} registros no banco de dados...')
     
     # O pangres exige que os índices do DF sejam as Chaves Primárias da tabela
     informe_diario_df.set_index(['COD_CNPJ', 'DT_REF'], inplace=True)
@@ -165,57 +150,6 @@ def carrega_informe_remoto(informe_diario_df, engine):
            add_new_columns=False) # Não deixa o script bagunçar seu schema
     
     print('Finalizada inserção no informe_diario.')
-
-def carrega_informe_local(informe_diario_df, periodo, compara_antes_insercao):
-    print('Inserindo informe diário no banco de dados local...')
-
-    informe_diario_df.sort_values(by=['COD_CNPJ', 'DT_REF'], axis='index')
-                   
-    df2 = None
-    if compara_antes_insercao:
-        df2 = recupera_informe_diario(periodo)
-    else: df2 = pd.DataFrame()
-
-    if not df2.empty:
-        df2['DT_REF']=pd.to_datetime(df2['DT_REF'], errors='coerce', format='%Y-%m-%d')
-
-    existe_dados_diferentes=(df2.empty or (not informe_diario_df.equals(df2)))
-    
-    if existe_dados_diferentes:
-        if df2.empty:
-            salva_informe_periodo(informe_diario_df)
-        else:
-            print('Iniciando a comparação dos dados recebidos e dos dados já inseridos no banco de dados...')
-            novos_dados=[]
-            #print(type(df2), type(informe_diario_df))
-            #list2=df2.values.tolist()
-            #print(list2)
-            #set2=set(df2.values.tolist()) 
-            set2 = set(map(tuple, df2.values.tolist()))
-            set1 = set(map(tuple, informe_diario_df.values.tolist())) 
-            res = list(set2 ^ set1) 
-            novos_dados_df = pd.DataFrame(data=res, columns=informe_diario_df.columns)
-            novos_dados_df.sort_values(by=['COD_CNPJ', 'DT_REF'])
-            #print(novos_dados_df.head())
-            #merge_df=pd.merge(informe_diario_df,df2, how='left', indicator=True)
-            #merge_df=pd.merge_ordered(informe_diario_df, df2, how='left', suffixes=['', '_'])
-            #print('merge finalizado')
-            #print(merge_df.columns)
-            #print(len(merge_df.index), len(informe_diario_df.index))
-            #print(merge_df.head())
-            #del(df2)
-            #del(informe_diario_df)
-            #novos_dados_df=merge_df[merge_df['_merge']=='left_only']
-            #novos_dados_df=novos_dados_df.drop(['_merge'], axis=1)
-
-            #del(merge_df)
-            
-            print (f'Foram encontrados {len(informe_diario_df.index)} registros no arquivo, sendo {len(novos_dados_df.index)} novos registros...')
-            # só vamos salvar no banco os registros que 
-            # já identificarmos que são realmente novos dados 
-            salva_informe_periodo(novos_dados_df)
-    else:
-        print ('Não encontrou novos dados a serem atualizados localmente')
 
 def recupera_informe_diario(periodo, engine):
     # No PostgreSQL, usamos TO_CHAR para formatar a data como 'YYYYMM'
@@ -238,7 +172,7 @@ def recupera_informe_diario(periodo, engine):
         print(f"Erro ao recuperar dados do período {periodo}: {e}")
         return pd.DataFrame()
 
-def importa_dados_remotos(engine):
+def importa_dados(engine):
     print ('Iniciando importação dos dados remotos na base local')
     last_month = datetime.today() - timedelta(days=30)
     last_month = last_month.strftime('%Y-%m-%d')
@@ -382,7 +316,7 @@ def salva_informe_periodo_scraper_wiki(informe_diario_df):
             #print('linha a ser inserida no banco', row)
             #scraperwiki.sqlite.save(unique_keys=['COD_CNPJ', 'DT_REF'], data=row, table_name='informe_diario')
 
-		print('Carga no banco de dados finalizada...')
+        print('Carga no banco de dados finalizada...')
     except Exception as err:
         print(f'Falha ao salvar registros no banco de dados.', err)
         print(type(err))    # the exception instance
@@ -398,7 +332,7 @@ def salva_informe_periodo(informe_diario_df):
     informe_diario_df.to_csv('dados_informe.csv', mode='a', index=False, header=not file_exists)
     print(f"Dados exportados para dados_informe.csv")
 
-def executa_scraper_dados_cadastrais(enable_remotedb, skip_salva_dados_cadastrais_remoto, engine):
+def executa_scraper_dados_cadastrais(skip_salva_dados_cadastrais_remoto, engine):
     #from bizdays import Calendar
     #cal = Calendar.load('feriados_nacionais_ANBIMA.csv')
     
@@ -413,7 +347,7 @@ def executa_scraper_dados_cadastrais(enable_remotedb, skip_salva_dados_cadastrai
     if df is None or df.empty:
         print('Recebeu dados vazios!')
         return False
-    return salva_dados_cadastrais(df, enable_remotedb, skip_salva_dados_cadastrais_remoto, engine)
+    return salva_dados_cadastrais(df, skip_salva_dados_cadastrais_remoto, engine)
 
 def captura_arquivo_dados_cadastrais():
     base_url = f'https://dados.cvm.gov.br/dados/FI/CAD/DADOS/'
@@ -491,19 +425,16 @@ def captura_arquivo_dados_cadastrais():
     # idxColunas=[0,1,5,10,12,13,14,15,16,17,18,19,20,21,24,25,26,27,28,29,34,35]
     return df
 
-def salva_dados_cadastrais(df, enable_remotedb, skip_salva_dados_cadastrais_remoto, engine):
+def salva_dados_cadastrais(df, skip_salva_dados_cadastrais_remoto, engine):
     if df is None or df.empty:
         print('Recebeu dados cadastrais vazios!')
         return False
-    if (enable_remotedb and not skip_salva_dados_cadastrais_remoto):
+    if (not skip_salva_dados_cadastrais_remoto):
         salva_dados_cadastrais_remoto(df, engine)
-    else:
-        print('Serão salvos os dados localmente...')
-        salva_dados_cadastrais_local(df)
 
-def salva_dados_cadastrais_remoto(df, engine):
+def salva_dados_cadastrais(df, engine):
     try:
-        print('Salvando dados cadastrais no banco de dados remoto...')
+        print('Salvando dados cadastrais no banco de dados...')
         
         # Ajuste o índice para bater com a sua Primary Key do PG
         df.set_index(['TP_FUNDO', 'COD_CNPJ'], inplace=True)
@@ -514,36 +445,18 @@ def salva_dados_cadastrais_remoto(df, engine):
                if_row_exists='update',
                add_new_columns=False)
         print('Dados cadastrais atualizados com sucesso.')
-		
+
     except IndexError as err:
-        print(f'Falha de índice ao salvar registros dos dados cadastrais no banco de dados remoto...', err)
+        print(f'Falha de índice ao salvar registros dos dados cadastrais no banco de dados...', err)
         print ('Índice', df.index.names)
         print(df.index[df.index.duplicated(keep=False)])
         print(type(err))    # the exception instance
         print(err.args)     # arguments stored in .args
     except Exception as err:
-        print(f'Falha ao salvar registros dos dados cadastrais no banco de dados remoto...', err)
+        print(f'Falha ao salvar registros dos dados cadastrais no banco de dados...', err)
         print(type(err))    # the exception instance
         print(err.args)     # arguments stored in .args
         return None   
-
-def salva_dados_cadastrais_local(df):
-    try:
-        print('Salvando dados cadastrais no banco de dados local...')
-        records_list=df.to_dict('records')
-        batch_size = 1000
-        chunks = (len(records_list) - 1) // batch_size + 1
-        for i in tqdm.tqdm(range(chunks)):
-            batch = records_list[i*batch_size:(i+1) * batch_size]
-            scraperwiki.sqlite.save(unique_keys=['COD_CNPJ'], data=batch, table_name='dados_cadastrais')
-        #for row in df.to_dict('records'):
-        #    scraperwiki.sqlite.save(unique_keys=['COD_CNPJ'], data=row, table_name='dados_cadastrais')
-
-    except Exception as err:
-        print(f'Falha ao salvar registros no banco de dados dos dados cadastrais dos fundos', err)
-        print(type(err))    # the exception instance
-        print(err.args)     # arguments stored in .args
-        return None
 
 def captura_arquivo_composicao_carteira(periodo):
     periodo=202005
@@ -626,35 +539,30 @@ def _download_file(base_url, filename):
         print(err.args)     # arguments stored in .args
         return None
 
-def executa_limpeza_acervo_antigo(enable_remotedb, engine):
-    if (enable_remotedb):
-        executa_limpeza_acervo_antigo_remoto(engine)
-    executa_limpeza_acervo_antigo_local()
-
-def executa_limpeza_acervo_antigo_remoto(engine):
+def executa_limpeza_acervo_antigo(engine):
     last_month = datetime.today() - timedelta(days=30)
     last_month = last_month.strftime('%Y-%m-%d')
 
     sql_delete=f'''with ultima_quota AS
         (
-		select i3.COD_CNPJ, max(i3.DT_REF) as DT_REF, i3.ANO_REF, i3.MES_REF
-		from informe_diario i3
-		group by COD_CNPJ, ANO_REF, MES_REF
+        select i3.COD_CNPJ, max(i3.DT_REF) as DT_REF, i3.ANO_REF, i3.MES_REF
+        from informe_diario i3
+        group by COD_CNPJ, ANO_REF, MES_REF
         )
         delete from informe_diario i
-	left join ultima_quota i2
-	on (
-		i.COD_CNPJ=i2.COD_CNPJ
-		and i.ANO_REF=i2.ANO_REF
-		and i.MES_REF=i2.MES_REF
-	)
-	where i.DT_REF < '{last_month}' and
-	i.DT_REF < i2.DT_REF
+    left join ultima_quota i2
+    on (
+        i.COD_CNPJ=i2.COD_CNPJ
+        and i.ANO_REF=i2.ANO_REF
+        and i.MES_REF=i2.MES_REF
+    )
+    where i.DT_REF < '{last_month}' and
+    i.DT_REF < i2.DT_REF
         ''' 
 
     sql_delete=f''' 
         delete from informe_diario 
-	where DT_REF < '{last_month}' 
+    where DT_REF < '{last_month}' 
         and (COD_CNPJ, DT_REF) IN 
         ( 
                 select i2.COD_CNPJ, i2.DT_REF from informe_diario i2
@@ -663,10 +571,10 @@ def executa_limpeza_acervo_antigo_remoto(engine):
                     where
                     i2.COD_CNPJ=i3.COD_CNPJ
                     and i2.ANO_REF=i3.ANO_REF
-	            and i2.MES_REF=i3.MES_REF
-	            and i3.DT_REF < i2.DT_REF
+                and i2.MES_REF=i3.MES_REF
+                and i3.DT_REF < i2.DT_REF
                 )
-	)
+    )
         ''' 
 
     try:
@@ -674,31 +582,6 @@ def executa_limpeza_acervo_antigo_remoto(engine):
         #print(sql_delete)
         with engine.connect() as connection:
             result = connection.execute(sql_delete)
-        print('Limpeza executada com sucesso...')
-    except (sqlite3.OperationalError, sqlalchemy.exc.OperationalError) as err:        
-        print('Falha ao apagar acervo antigo...', err)
-        print(type(err))    # the exception instance
-        print(err.args)     # arguments stored in .args
-
-
-
-def executa_limpeza_acervo_antigo_local():
-    last_month = datetime.today() - timedelta(days=30)
-    last_month = last_month.strftime('%Y-%m-%d')
-
-    sql_delete=f'''delete from informe_diario
-        where informe_diario.DT_REF < '{last_month}' and 
-        exists (
-            select 1 from informe_diario d2
-            where informe_diario.COD_CNPJ = d2.COD_CNPJ
-            and informe_diario.DT_REF < d2.DT_REF
-            and strftime('%Y%m', informe_diario.DT_REF) = strftime('%Y%m', d2.DT_REF)
-        )'''
-
-    try:
-        print('Apagando acervo antigo da base local...')
-        #print(sql_delete)
-        scraperwiki.sqlite.execute(sql_delete)
         print('Limpeza executada com sucesso...')
     except (sqlite3.OperationalError, sqlalchemy.exc.OperationalError) as err:        
         print('Falha ao apagar acervo antigo...', err)
