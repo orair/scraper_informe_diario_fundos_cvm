@@ -17,16 +17,20 @@ jobs:
           dolt config --global --add user.name "orair"
           dolt config --global --add user.email "gustavo.orair@gmail.com"
 
-          # Autenticação limpa: Injeta o token direto no comando de importação
-          echo "${{ secrets.DOLT_TOKEN }}" | dolt creds import
       - name: Execute Schema Script
         run: |
-          dolt clone "orair/cvm-informe-diario"
+          # O formato para conectar ao DoltHub é:
+          # dolt sql --host doltremoteapi.dolthub.com 
+          # --user orair --password ${{ secrets.DOLT_TOKEN }} 
+          # --database cvm-informe-diario --batch < create_schema_mysql.sql
           
-          # 3. Entra na pasta do banco e executa o SQL
-          cd cvm-informe-diario
-          dolt sql --batch < ../create_schema_mysql.sql
-          
+          dolt sql \
+            --host doltremoteapi.dolthub.com \
+            --user orair \
+            --password ${{ secrets.DOLT_TOKEN }} \
+            --database cvm-informe-diario \
+            --batch < create_schema_mysql.sql
+
         env:
           DOLT_DATABASE: "cvm-informe-diario"
           DOLT_TOKEN: ${{ secrets.DOLT_TOKEN }}
