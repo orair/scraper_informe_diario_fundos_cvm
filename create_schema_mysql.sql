@@ -1,8 +1,3 @@
--- 1. Limpeza de tabelas antigas para garantir nova estrutura
-DROP TABLE IF EXISTS informe_diario;
-DROP TABLE IF EXISTS dados_cadastrais;
-
--- 2. Tabela de Cadastro
 CREATE TABLE IF NOT EXISTS dados_cadastrais (
         TP_FUNDO VARCHAR(20) NOT NULL,
 	    COD_CNPJ VARCHAR(14) NOT NULL,
@@ -44,10 +39,18 @@ CREATE TABLE IF NOT EXISTS dados_cadastrais (
         CUSTODIANTE TEXT, 	
         CNPJ_CONTROLADOR VARCHAR(50), 	
         CONTROLADOR TEXT,
-        PRIMARY KEY(TP_FUNDO, COD_CNPJ)
+        PRIMARY KEY(TP_FUNDO, COD_CNPJ),
+        -- Índices de Cadastro
+        UNIQUE INDEX idx_dados_cadastrais_01 (COD_CNPJ),
+        UNIQUE INDEX idx_dados_cadastrais_02 (CNPJ_FUNDO),
+        INDEX idx_dados_cadastrais_03 (DENOM_SOCIAL),
+        INDEX idx_dados_cadastrais_04 (SIT),
+        INDEX idx_dados_cadastrais_05 (CLASSE),
+        INDEX idx_dados_cadastrais_06 (CNPJ_ADMIN),
+        INDEX idx_dados_cadastrais_07 (CPF_CNPJ_GESTOR),
+        INDEX idx_dados_cadastrais_08 (CNPJ_CONTROLADOR),
+        INDEX idx_dados_cadastrais_09 (CD_CVM)
 );
-
-DROP TABLE IF EXISTS informe_diario;
 
 CREATE TABLE IF NOT EXISTS informe_diario (
         COD_CNPJ VARCHAR(14) NOT NULL, 	
@@ -62,65 +65,13 @@ CREATE TABLE IF NOT EXISTS informe_diario (
         NR_COTST INTEGER,
 	    ANO_REF INTEGER GENERATED ALWAYS AS (YEAR(DT_REF)) STORED,
 	    MES_REF INTEGER GENERATED ALWAYS AS (MONTH(DT_REF)) STORED,
-        PRIMARY KEY(COD_CNPJ, DT_REF)
-);    
-
--- DROP INDEX IF EXISTS idx_dados_cadastrais_01;
--- DROP INDEX IF EXISTS idx_dados_cadastrais_02;
--- DROP INDEX IF EXISTS idx_dados_cadastrais_03;
--- DROP INDEX IF EXISTS idx_dados_cadastrais_04;
--- DROP INDEX IF EXISTS idx_dados_cadastrais_05;
--- DROP INDEX IF EXISTS idx_dados_cadastrais_06;
--- DROP INDEX IF EXISTS idx_dados_cadastrais_07;
--- DROP INDEX IF EXISTS idx_dados_cadastrais_08;
- 
--- DROP INDEX IF EXISTS idx_informe_diario_01;
--- DROP INDEX IF EXISTS idx_informe_diario_02;
--- DROP INDEX IF EXISTS idx_informe_diario_03;
--- DROP INDEX IF EXISTS idx_informe_diario_04;
--- DROP INDEX IF EXISTS idx_informe_diario_05;
--- DROP INDEX IF EXISTS idx_informe_diario_06;
--- DROP INDEX IF EXISTS idx_informe_diario_07;
--- DROP INDEX IF EXISTS idx_informe_diario_08;
-    
-CREATE UNIQUE INDEX idx_dados_cadastrais_01
-        ON dados_cadastrais (COD_CNPJ);
-CREATE UNIQUE INDEX idx_dados_cadastrais_02
-        ON dados_cadastrais (CNPJ_FUNDO);
-CREATE INDEX idx_dados_cadastrais_03
-        ON dados_cadastrais (DENOM_SOCIAL);
-CREATE INDEX idx_dados_cadastrais_04
-        ON dados_cadastrais (SIT);
-CREATE INDEX idx_dados_cadastrais_05
-        ON dados_cadastrais (CLASSE);
-CREATE INDEX idx_dados_cadastrais_06
-        ON dados_cadastrais (CNPJ_ADMIN);
-CREATE INDEX idx_dados_cadastrais_07
-        ON dados_cadastrais (CPF_CNPJ_GESTOR);
-CREATE INDEX idx_dados_cadastrais_08
-        ON dados_cadastrais (CNPJ_CONTROLADOR);
-CREATE INDEX idx_dados_cadastrais_09
-        ON dados_cadastrais (TP_FUNDO);
-CREATE INDEX idx_dados_cadastrais_10
-        ON dados_cadastrais (CD_CVM);
-
-
-CREATE INDEX idx_informe_diario_01
-        ON informe_diario (COD_CNPJ);
-CREATE INDEX idx_informe_diario_02
-        ON informe_diario (CNPJ_FUNDO);
-CREATE INDEX idx_informe_diario_03
-        ON informe_diario (DT_REF desc);
-CREATE INDEX idx_informe_diario_04
-        ON informe_diario (DT_COMPTC);
-CREATE UNIQUE INDEX idx_informe_diario_05
-        ON informe_diario (COD_CNPJ, DT_REF desc);
-CREATE UNIQUE INDEX idx_informe_diario_06
-        ON informe_diario (CNPJ_FUNDO, DT_REF desc);
-CREATE INDEX idx_informe_diario_07
-        ON informe_diario (ANO_REF desc);
-CREATE INDEX idx_informe_diario_08
-        ON informe_diario (MES_REF);
-CREATE INDEX idx_informe_diario_09
-        ON informe_diario (CNPJ_FUNDO, ANO_REF desc, MES_REF);
-
+        PRIMARY KEY(COD_CNPJ, DT_REF desc),
+        -- Índices de Informe (Otimizados para ordenação e busca)
+        INDEX idx_informe_diario_01 (CNPJ_FUNDO),
+        INDEX idx_informe_diario_02 (DT_REF DESC),
+        INDEX idx_informe_diario_03 (DT_COMPTC),
+        UNIQUE INDEX idx_informe_diario_04 (CNPJ_FUNDO, DT_REF DESC),
+        INDEX idx_informe_diario_05 (ANO_REF DESC),
+        INDEX idx_informe_diario_06 (MES_REF),
+        INDEX idx_informe_diario_07 (CNPJ_FUNDO, ANO_REF DESC, MES_REF)	
+);
