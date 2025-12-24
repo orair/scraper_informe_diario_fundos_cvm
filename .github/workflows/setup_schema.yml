@@ -18,8 +18,16 @@ jobs:
 
       - name: Execute Schema Script
         run: |
-          dolt link "cvm-informe-diario"
-          dolt sql --batch < create_schema_mysql.sql        
+          dolt clone "orair/cvm-informe-diario"
+          
+          # 3. Entra na pasta do banco e executa o SQL
+          cd cvm-informe-diario
+          dolt sql --batch < ../create_schema_mysql.sql
+          
+          # 4. Faz o commit e push das alterações estruturais
+          dolt add .
+          dolt commit -m "Update schema"
+          dolt push origin main
         env:
           DOLT_DATABASE: "cvm-informe-diario"
           DOLT_TOKEN: ${{ secrets.DOLT_TOKEN }}
